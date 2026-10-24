@@ -94,7 +94,7 @@ internal class YandexMusicAudioProvider(
                 )
             )
         } else {
-            ProviderStreamOutcome.Unavailable(listOf(StreamRejection.NOT_STREAMABLE))
+            ProviderStreamOutcome.Unavailable(listOf(StreamRejection.NO_MEDIA))
         }
     } catch (e: Exception) {
         ProviderStreamOutcome.Failed(ProviderFailure.NETWORK)

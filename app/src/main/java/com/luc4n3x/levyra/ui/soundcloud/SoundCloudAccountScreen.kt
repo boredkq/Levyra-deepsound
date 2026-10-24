@@ -94,7 +94,7 @@ internal fun SoundCloudAccountScreen(
                         ) {
                             Box(contentAlignment = Alignment.Center) {
                                 Icon(
-                                    Icons.Rounded.Cloud,
+                                    Icons.Rounded.GraphicEq,
                                     contentDescription = null,
                                     modifier = Modifier.size(32.dp),
                                     tint = LevyraPink

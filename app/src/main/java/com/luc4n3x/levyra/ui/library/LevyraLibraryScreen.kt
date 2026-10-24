@@ -657,6 +657,11 @@ internal fun LevyraLibraryScreen(
     BackHandler(enabled = backEnabled && !selectionActive && openSmartCollectionName != null) { openSmartCollectionName = null }
     BackHandler(enabled = backEnabled && selectionActive) { selectedKeys = emptySet() }
 
+    val yandexContext = androidx.compose.ui.platform.LocalContext.current
+    val yandexSessionStore = remember { com.luc4n3x.levyra.data.yandex.YandexMusicSessionStore.getInstance(yandexContext) }
+    val yandexAccount = remember { yandexSessionStore.loadAccount() }
+    var showYandexSheet by remember { mutableStateOf(false) }
+
     Box(modifier = Modifier.fillMaxSize().background(if (com.luc4n3x.levyra.ui.theme.LevyraIsYouTubeMusic) com.luc4n3x.levyra.ui.theme.YouTubeMusicDesign.background else LevyraInk)) {
         LazyColumn(
             state = listState,
@@ -687,20 +692,10 @@ internal fun LevyraLibraryScreen(
                 }
             }
 
-            val yandexContext = androidx.compose.ui.platform.LocalContext.current
-            val yandexSessionStore = remember { com.luc4n3x.levyra.data.yandex.YandexMusicSessionStore.getInstance(yandexContext) }
-            val yandexAccount = remember { yandexSessionStore.loadAccount() }
             if (yandexAccount?.isConnected == true && category == LibraryCategory.Overview) {
                 item(key = "yandex-music-library") {
-                    var showYandexSheet by remember { mutableStateOf(false) }
                     com.luc4n3x.levyra.ui.yandex.YandexMusicLibraryLink(yandexAccount) {
                         showYandexSheet = true
-                    }
-                    if (showYandexSheet) {
-                        com.luc4n3x.levyra.ui.yandex.YandexMusicAccountScreen(
-                            sessionStore = yandexSessionStore,
-                            onClose = { showYandexSheet = false }
-                        )
                     }
                 }
             }
@@ -1452,6 +1447,13 @@ internal fun LevyraLibraryScreen(
             dismissButton = {
                 TextButton(onClick = { confirmDelete = false }) { Text(strings.cancel) }
             }
+        )
+    }
+
+    if (showYandexSheet) {
+        com.luc4n3x.levyra.ui.yandex.YandexMusicAccountScreen(
+            sessionStore = yandexSessionStore,
+            onClose = { showYandexSheet = false }
         )
     }
 }
