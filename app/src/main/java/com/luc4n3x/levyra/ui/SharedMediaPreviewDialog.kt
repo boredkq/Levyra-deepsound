@@ -1,4 +1,4 @@
-package com.luc4n3x.levyra.ui.dialog
+package com.luc4n3x.levyra.ui
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.*
@@ -23,14 +23,13 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import coil3.compose.AsyncImage
-import com.luc4n3x.levyra.feature.bulklinks.BulkLinkCaptureCopy
-import com.luc4n3x.levyra.feature.bulklinks.BulkLinkCaptureSummary
-import com.luc4n3x.levyra.feature.bulklinks.bulkLinkCaptureCopy
-import com.luc4n3x.levyra.feature.share.SharedMediaKind
-import com.luc4n3x.levyra.feature.share.SharedMediaPreview
+import com.luc4n3x.levyra.feature.sharedmedia.BulkLinkCaptureSummary
+import com.luc4n3x.levyra.feature.sharedmedia.SharedMediaKind
+import com.luc4n3x.levyra.feature.sharedmedia.SharedMediaPreview
 import com.luc4n3x.levyra.ui.components.CircleIconButton
 import com.luc4n3x.levyra.ui.components.EmptyCover
-import com.luc4n3x.levyra.ui.components.pressable
+import com.luc4n3x.levyra.ui.i18n.BulkLinkCaptureCopy
+import com.luc4n3x.levyra.ui.i18n.bulkLinkCaptureCopy
 import com.luc4n3x.levyra.ui.theme.*
 
 @Composable

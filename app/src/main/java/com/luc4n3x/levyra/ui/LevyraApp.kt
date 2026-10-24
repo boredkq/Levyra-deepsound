@@ -1,7 +1,6 @@
 @file:androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
 package com.luc4n3x.levyra.ui
 
-import com.luc4n3x.levyra.ui.dialog.SharedMediaPreviewDialog
 
 import com.luc4n3x.levyra.ui.theme.*
 import com.luc4n3x.levyra.ui.theme.nocturneMiniSettings
@@ -3054,7 +3053,7 @@ fun LevyraApp(
                     onClose = { showYoutubeMusic = false }
                 )
             }
-            com.luc4n3x.levyra.ui.account.LevyraExternalAccountOverlays(
+            LevyraExternalAccountOverlays(
                 showYandex = showYandexMusic,
                 onCloseYandex = { showYandexMusic = false },
                 showSoundCloud = showSoundCloud,

@@ -1,4 +1,4 @@
-package com.luc4n3x.levyra.ui.account
+package com.luc4n3x.levyra.ui
 
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.platform.LocalContext
