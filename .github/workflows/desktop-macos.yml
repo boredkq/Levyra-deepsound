@@ -33,11 +33,11 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - os: macos-13
-            arch: x64
-          - os: macos-14
-            arch: arm64
-    runs-on: ${{ matrix.os }}
+          - arch: x64
+            java-arch: x64
+          - arch: arm64
+            java-arch: aarch64
+    runs-on: macos-14
     timeout-minutes: 60
     steps:
       - name: Checkout
@@ -50,6 +50,7 @@ jobs:
         with:
           distribution: temurin
           java-version: "21"
+          architecture: ${{ matrix.java-arch }}
 
       - name: Resolve desktop version
         id: version
