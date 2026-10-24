@@ -14,6 +14,7 @@ import com.luc4n3x.levyra.data.network.YoutubeClientIdentityInterceptor
 import com.luc4n3x.levyra.data.network.YoutubeRegionProfile
 import com.luc4n3x.levyra.data.network.YoutubeStreamClientIdentity
 import com.luc4n3x.levyra.data.network.YoutubeStreamClientIdentityRegistry
+import com.luc4n3x.levyra.data.hqaudio.CompositeHighQualityAudioProvider
 import com.luc4n3x.levyra.data.hqaudio.HighQualityAudioResolver
 import com.luc4n3x.levyra.data.hqaudio.HighQualityMappingStore
 import com.luc4n3x.levyra.data.hqaudio.HighQualityPlaybackCoordinator
@@ -21,6 +22,9 @@ import com.luc4n3x.levyra.data.hqaudio.HighQualityProviderHttpClient
 import com.luc4n3x.levyra.data.hqaudio.OkHttpProviderExchange
 import com.luc4n3x.levyra.data.hqaudio.SharedPreferencesMappingStorage
 import com.luc4n3x.levyra.data.hqaudio.jiosaavn.JioSaavnAudioProvider
+import com.luc4n3x.levyra.data.yandex.YandexMusicAudioProvider
+import com.luc4n3x.levyra.data.yandex.YandexMusicClient
+import com.luc4n3x.levyra.data.yandex.YandexMusicSessionStore
 import com.luc4n3x.levyra.domain.HighQualityAudioMode
 import com.luc4n3x.levyra.domain.LevyraAudioQuality
 import com.luc4n3x.levyra.domain.PlaybackDeliveryMethod
@@ -388,9 +392,20 @@ class PlaybackResolver private constructor(private val context: Context) {
     private val sourceMatchStore = PlaybackSourceMatchStore(LevyraDatabase.get(context).playbackSourceMatchDao())
     private val sourceMatchMutationMutex = Mutex()
     private val sourceMatchScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    private val yandexMusicAudioProvider by lazy {
+        YandexMusicAudioProvider(
+            client = YandexMusicClient(),
+            sessionStore = YandexMusicSessionStore.getInstance(context)
+        )
+    }
     private val highQualityPlayback = HighQualityPlaybackCoordinator(
         HighQualityAudioResolver(
-            provider = JioSaavnAudioProvider(OkHttpProviderExchange(HighQualityProviderHttpClient::client)),
+            provider = CompositeHighQualityAudioProvider(
+                listOf(
+                    JioSaavnAudioProvider(OkHttpProviderExchange(HighQualityProviderHttpClient::client)),
+                    yandexMusicAudioProvider
+                )
+            ),
             mappingStore = HighQualityMappingStore(SharedPreferencesMappingStorage(context)),
             scope = resolveScope
         )

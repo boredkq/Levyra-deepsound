@@ -20898,6 +20898,8 @@ private fun SettingsOverlay(
             SettingsCategoryMeta("downloads", categoryTitle(strings.downloads), "${strings.wifiOnly} · ${strings.simultaneousDownloads}", Icons.Rounded.Download, LevyraBlue, SettingsHubGroup.Library),
             SettingsCategoryMeta("backup", strings.vaultTitle, "${strings.backupNow} · ${strings.restoreBackup}", Icons.Rounded.History, LevyraBlue, SettingsHubGroup.Library),
             SettingsCategoryMeta("youtube_music", "YouTube Music", com.luc4n3x.levyra.ui.i18n.youtubeMusicCopy(strings.code).introduction, Icons.Rounded.AccountCircle, LevyraCyan, SettingsHubGroup.Accounts),
+            SettingsCategoryMeta("yandex_music", "Яндекс Музыка", "Подключение аккаунта · Моя волна · 320 kbps", Icons.Rounded.GraphicEq, LevyraCyan, SettingsHubGroup.Accounts),
+            SettingsCategoryMeta("soundcloud", "SoundCloud", "Публичный доступ · Ремиксы и стриминг", Icons.Rounded.Cloud, LevyraPink, SettingsHubGroup.Accounts),
             SettingsCategoryMeta("integrations", categoryTitle(strings.integrations), "Last.fm · ListenBrainz · AudD", Icons.Rounded.Link, LevyraCyan, SettingsHubGroup.Accounts),
             SettingsCategoryMeta("system", categoryTitle(strings.preferences), "${strings.batteryUnrestricted} · ${strings.language}", Icons.Rounded.Settings, LevyraOrange, SettingsHubGroup.System),
             SettingsCategoryMeta("network", categoryTitle(strings.networkTitle), strings.networkSubtitle, Icons.Rounded.Public, LevyraOrange, SettingsHubGroup.System),
@@ -21066,6 +21068,18 @@ private fun SettingsOverlay(
                         )
                     }
                     settingsGroupedItems { when (current) {
+                        "yandex_music" -> item {
+                            val context = LocalContext.current
+                            com.luc4n3x.levyra.ui.yandex.YandexMusicAccountScreen(
+                                sessionStore = com.luc4n3x.levyra.data.yandex.YandexMusicSessionStore.getInstance(context),
+                                onClose = { activeCategory = null }
+                            )
+                        }
+                        "soundcloud" -> item {
+                            com.luc4n3x.levyra.ui.soundcloud.SoundCloudAccountScreen(
+                                onClose = { activeCategory = null }
+                            )
+                        }
                         "network" -> item {
                             NetworkSettingsPanel(
                                 settings = networkSettings,

@@ -687,6 +687,24 @@ internal fun LevyraLibraryScreen(
                 }
             }
 
+            val yandexContext = androidx.compose.ui.platform.LocalContext.current
+            val yandexSessionStore = remember { com.luc4n3x.levyra.data.yandex.YandexMusicSessionStore.getInstance(yandexContext) }
+            val yandexAccount = remember { yandexSessionStore.loadAccount() }
+            if (yandexAccount?.isConnected == true && category == LibraryCategory.Overview) {
+                item(key = "yandex-music-library") {
+                    var showYandexSheet by remember { mutableStateOf(false) }
+                    com.luc4n3x.levyra.ui.yandex.YandexMusicLibraryLink(yandexAccount) {
+                        showYandexSheet = true
+                    }
+                    if (showYandexSheet) {
+                        com.luc4n3x.levyra.ui.yandex.YandexMusicAccountScreen(
+                            sessionStore = yandexSessionStore,
+                            onClose = { showYandexSheet = false }
+                        )
+                    }
+                }
+            }
+
             item(key = "library-search") {
                 OutlinedTextField(
                     value = query,

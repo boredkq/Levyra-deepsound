@@ -17,6 +17,11 @@ import androidx.work.WorkInfo
 import androidx.work.WorkManager
 import com.luc4n3x.levyra.BuildConfig
 import com.luc4n3x.levyra.data.AppUpdateRepository
+import com.luc4n3x.levyra.data.yandex.YandexMusicAudioProvider
+import com.luc4n3x.levyra.data.yandex.YandexMusicClient
+import com.luc4n3x.levyra.data.yandex.YandexMusicSessionStore
+import com.luc4n3x.levyra.data.soundcloud.SoundCloudAudioProvider
+import com.luc4n3x.levyra.data.soundcloud.SoundCloudClient
 import com.luc4n3x.levyra.data.collections.isPersonalCollectionTrack
 import com.luc4n3x.levyra.data.ArtistRepository
 import com.luc4n3x.levyra.data.ChartsRepository
@@ -893,13 +898,28 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     private val lyricsRepository = LyricsRepository(application.applicationContext)
     private val sponsorBlockRepository = SponsorBlockRepository()
     private val resolver = PlaybackResolver.getInstance(application.applicationContext)
+    private val yandexMusicProvider by lazy {
+        YandexMusicAudioProvider(
+            client = YandexMusicClient(),
+            sessionStore = YandexMusicSessionStore.getInstance(application.applicationContext)
+        )
+    }
+    private val soundCloudProvider by lazy {
+        SoundCloudAudioProvider(
+            client = SoundCloudClient()
+        )
+    }
     private val providerRouter = LevyraProviderRouter(
         catalogProviders = listOf(
             YoutubeMusicCatalogProvider(repository),
+            yandexMusicProvider,
+            soundCloudProvider,
             MemoryCatalogProvider(repository)
         ),
         playbackProviders = listOf(
             CachedPlaybackProvider(resolver),
+            yandexMusicProvider,
+            soundCloudProvider,
             LevyraNativePlaybackProvider(resolver)
         )
     )
