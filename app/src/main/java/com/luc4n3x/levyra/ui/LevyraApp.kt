@@ -1602,7 +1602,7 @@ internal fun InstantArtworkPlaceholder(track: Track, modifier: Modifier) {
     }
 }
 @Composable
-private fun EmptyCover(modifier: Modifier) {
+internal fun EmptyCover(modifier: Modifier) {
     Box(
         modifier = modifier.background(Brush.linearGradient(listOf(LevyraCyan.copy(alpha = 0.72f), LevyraViolet.copy(alpha = 0.72f)))),
         contentAlignment = Alignment.Center
@@ -26578,7 +26578,7 @@ private fun GradientButton(text: String, onClick: () -> Unit) {
 }
 
 @Composable
-private fun CircleIconButton(
+internal fun CircleIconButton(
     icon: ImageVector,
     tint: Color,
     background: Color,

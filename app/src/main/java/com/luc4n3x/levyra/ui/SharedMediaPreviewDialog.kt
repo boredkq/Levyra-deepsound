@@ -26,8 +26,6 @@ import coil3.compose.AsyncImage
 import com.luc4n3x.levyra.feature.sharedmedia.BulkLinkCaptureSummary
 import com.luc4n3x.levyra.feature.sharedmedia.SharedMediaKind
 import com.luc4n3x.levyra.feature.sharedmedia.SharedMediaPreview
-import com.luc4n3x.levyra.ui.components.CircleIconButton
-import com.luc4n3x.levyra.ui.components.EmptyCover
 import com.luc4n3x.levyra.ui.i18n.BulkLinkCaptureCopy
 import com.luc4n3x.levyra.ui.i18n.bulkLinkCaptureCopy
 import com.luc4n3x.levyra.ui.theme.*
