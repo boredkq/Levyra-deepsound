@@ -19,6 +19,7 @@ object VlcNativeLocator {
         if (candidates.isNotEmpty()) {
             prependJnaLibraryPath(candidates)
         }
+        preloadVlcCore(candidates)
         val discovery = NativeDiscovery()
         val found = runCatching { discovery.discover() }.getOrDefault(false)
         return VlcDiscovery(
@@ -26,6 +27,30 @@ object VlcNativeLocator {
             path = if (found) discovery.discoveredPath().orEmpty() else "",
             searchedDirectories = candidates.map(Path::toString)
         )
+    }
+
+    private fun preloadVlcCore(candidates: List<Path>) {
+        for (candidate in candidates) {
+            val coreCandidates = listOf(
+                candidate.resolve("libvlccore.dylib"),
+                candidate.resolve("libvlccore.so"),
+                candidate.resolve("vlccore.dll")
+            )
+            for (core in coreCandidates) {
+                if (Files.exists(core)) {
+                    runCatching {
+                        com.sun.jna.NativeLibrary.getInstance(core.toAbsolutePath().toString())
+                    }
+                }
+            }
+            val pluginsDir = candidate.parent?.resolve("plugins") ?: candidate.resolve("plugins")
+            if (Files.isDirectory(pluginsDir)) {
+                runCatching {
+                    val pathStr = pluginsDir.toAbsolutePath().toString()
+                    System.setProperty("VLC_PLUGIN_PATH", pathStr)
+                }
+            }
+        }
     }
 
     fun candidateDirectories(preferredDirectory: String, bundledDirectory: Path?): List<Path> {
