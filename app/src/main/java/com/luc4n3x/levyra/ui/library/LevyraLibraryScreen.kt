@@ -281,6 +281,7 @@ internal fun LevyraLibraryScreen(
     onOpenDownloads: () -> Unit,
     youtubeMusicAccount: com.luc4n3x.levyra.data.youtubemusic.YoutubeMusicAccount? = null,
     onOpenYoutubeMusic: () -> Unit = {},
+    onOpenYandexMusic: () -> Unit = {},
     backEnabled: Boolean = true
 ) {
     val strings = LocalLevyraStrings.current
@@ -659,8 +660,7 @@ internal fun LevyraLibraryScreen(
 
     val yandexContext = androidx.compose.ui.platform.LocalContext.current
     val yandexSessionStore = remember { com.luc4n3x.levyra.data.yandex.YandexMusicSessionStore.getInstance(yandexContext) }
-    val yandexAccount = remember { yandexSessionStore.loadAccount() }
-    var showYandexSheet by remember { mutableStateOf(false) }
+    val yandexAccount by yandexSessionStore.accountFlow.collectAsStateWithLifecycle()
 
     Box(modifier = Modifier.fillMaxSize().background(if (com.luc4n3x.levyra.ui.theme.LevyraIsYouTubeMusic) com.luc4n3x.levyra.ui.theme.YouTubeMusicDesign.background else LevyraInk)) {
         LazyColumn(
@@ -694,9 +694,7 @@ internal fun LevyraLibraryScreen(
 
             if (yandexAccount?.isConnected == true && category == LibraryCategory.Overview) {
                 item(key = "yandex-music-library") {
-                    com.luc4n3x.levyra.ui.yandex.YandexMusicLibraryLink(yandexAccount) {
-                        showYandexSheet = true
-                    }
+                    com.luc4n3x.levyra.ui.yandex.YandexMusicLibraryLink(yandexAccount, onOpenYandexMusic)
                 }
             }
 
@@ -1447,13 +1445,6 @@ internal fun LevyraLibraryScreen(
             dismissButton = {
                 TextButton(onClick = { confirmDelete = false }) { Text(strings.cancel) }
             }
-        )
-    }
-
-    if (showYandexSheet) {
-        com.luc4n3x.levyra.ui.yandex.YandexMusicAccountScreen(
-            sessionStore = yandexSessionStore,
-            onClose = { showYandexSheet = false }
         )
     }
 }

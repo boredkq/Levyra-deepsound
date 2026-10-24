@@ -40,13 +40,31 @@ object VlcNativeLocator {
 
     private fun wellKnownDirectories(): List<Path> {
         val osName = System.getProperty("os.name").orEmpty().lowercase()
-        if (!osName.contains("win")) return emptyList()
-        val programFiles = System.getenv("ProgramFiles").orEmpty().ifBlank { "C:\\Program Files" }
-        val programFilesX86 = System.getenv("ProgramFiles(x86)").orEmpty().ifBlank { "C:\\Program Files (x86)" }
-        return listOf(
-            Paths.get(programFiles, "VideoLAN", "VLC"),
-            Paths.get(programFilesX86, "VideoLAN", "VLC")
-        )
+        if (osName.contains("win")) {
+            val programFiles = System.getenv("ProgramFiles").orEmpty().ifBlank { "C:\\Program Files" }
+            val programFilesX86 = System.getenv("ProgramFiles(x86)").orEmpty().ifBlank { "C:\\Program Files (x86)" }
+            return listOf(
+                Paths.get(programFiles, "VideoLAN", "VLC"),
+                Paths.get(programFilesX86, "VideoLAN", "VLC")
+            )
+        }
+        if (osName.contains("mac") || osName.contains("darwin")) {
+            return listOf(
+                Paths.get("/Applications/VLC.app/Contents/MacOS/lib"),
+                Paths.get("/Applications/VLC.app/Contents/MacOS"),
+                Paths.get("/opt/homebrew/lib"),
+                Paths.get("/usr/local/lib")
+            )
+        }
+        if (osName.contains("linux")) {
+            return listOf(
+                Paths.get("/usr/lib"),
+                Paths.get("/usr/lib/x86_64-linux-gnu"),
+                Paths.get("/usr/lib/aarch64-linux-gnu"),
+                Paths.get("/usr/local/lib")
+            )
+        }
+        return emptyList()
     }
 
     private fun prependJnaLibraryPath(directories: List<Path>) {

@@ -32,6 +32,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil3.compose.AsyncImage
 import com.luc4n3x.levyra.data.yandex.*
 import com.luc4n3x.levyra.ui.components.LevyraBackButton
@@ -77,7 +78,7 @@ internal fun YandexMusicAccountScreen(
 ) {
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
-    var account by remember { mutableStateOf(sessionStore.loadAccount()) }
+    val account by sessionStore.accountFlow.collectAsStateWithLifecycle()
     var token by remember { mutableStateOf(sessionStore.loadToken()) }
 
     var deviceCodeState by remember { mutableStateOf<YandexDeviceCode?>(null) }
@@ -92,7 +93,6 @@ internal fun YandexMusicAccountScreen(
         if (!token.isNullOrBlank() && (account == null || !account!!.isConnected)) {
             try {
                 val acc = client.fetchAccount(token!!)
-                account = acc
                 sessionStore.saveAccount(acc)
             } catch (e: Exception) {
                 // Token may be invalid or expired
@@ -113,7 +113,6 @@ internal fun YandexMusicAccountScreen(
                     token = polledToken
                     sessionStore.saveToken(polledToken)
                     val acc = client.fetchAccount(polledToken)
-                    account = acc
                     sessionStore.saveAccount(acc)
                     isPolling = false
                     deviceCodeState = null
@@ -208,7 +207,6 @@ internal fun YandexMusicAccountScreen(
                         onClick = {
                             sessionStore.clear()
                             token = null
-                            account = null
                             deviceCodeState = null
                             isPolling = false
                             Toast.makeText(context, "Аккаунт отключен", Toast.LENGTH_SHORT).show()
@@ -376,7 +374,6 @@ internal fun YandexMusicAccountScreen(
                                         coroutineScope.launch {
                                             try {
                                                 val acc = client.fetchAccount(entered)
-                                                account = acc
                                                 sessionStore.saveAccount(acc)
                                                 Toast.makeText(context, "Токен сохранен!", Toast.LENGTH_SHORT).show()
                                             } catch (e: Exception) {

@@ -1,0 +1,126 @@
+name: Desktop macOS Build
+
+on:
+  pull_request:
+    paths:
+      - "desktop/**"
+      - "third_party/LevyraExtractor/**"
+      - ".github/workflows/desktop-macos.yml"
+  push:
+    branches:
+      - main
+      - master
+    paths:
+      - "desktop/**"
+      - "third_party/LevyraExtractor/**"
+      - ".github/workflows/desktop-macos.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: desktop-macos-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  GRADLE_OPTS: -Dorg.gradle.daemon=false
+
+jobs:
+  build-macos:
+    name: Build macOS (${{ matrix.arch }})
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-13
+            arch: x64
+          - os: macos-14
+            arch: arm64
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 60
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Setup Java
+        uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: Resolve desktop version
+        id: version
+        shell: bash
+        run: |
+          versionFile="desktop/version.properties"
+          if [ ! -f "$versionFile" ]; then
+            echo "Error: $versionFile not found"
+            exit 1
+          fi
+          version=$(grep '^levyraDesktopVersion=' "$versionFile" | cut -d'=' -f2 | tr -d '[:space:]')
+          if [ -z "$version" ]; then
+            echo "Error: levyraDesktopVersion not found in $versionFile"
+            exit 1
+          fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "Levyra Desktop version: $version"
+
+      - name: Make gradlew executable
+        run: chmod +x desktop/gradlew
+
+      - name: Build macOS Distribution & DMG
+        shell: bash
+        working-directory: desktop
+        run: |
+          ./gradlew --stacktrace createReleaseDistributable packageReleaseDmg \
+            -PlevyraDesktopVersion="${{ steps.version.outputs.version }}"
+
+      - name: Prepare macOS release assets
+        shell: bash
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          ARCH="${{ matrix.arch }}"
+          OUTPUT="$PWD/release-assets"
+          mkdir -p "$OUTPUT"
+
+          # Find DMG
+          DMG_FILE=$(find desktop/app/build/compose/binaries/main-release/dmg -name "*.dmg" 2>/dev/null | head -n 1)
+          if [ -n "$DMG_FILE" ] && [ -f "$DMG_FILE" ]; then
+            DEST_DMG="LEVYRA-macOS-$VERSION-$ARCH.dmg"
+            cp "$DMG_FILE" "$OUTPUT/$DEST_DMG"
+            echo "Copied DMG: $DEST_DMG"
+          else
+            echo "Warning: DMG file not found in main-release/dmg"
+          fi
+
+          # Find and zip .app bundle
+          APP_DIR=$(find desktop/app/build/compose/binaries/main-release/app -name "*.app" -maxdepth 2 2>/dev/null | head -n 1)
+          if [ -n "$APP_DIR" ] && [ -d "$APP_DIR" ]; then
+            DEST_ZIP="LEVYRA-macOS-$VERSION-$ARCH-portable.zip"
+            APP_PARENT=$(dirname "$APP_DIR")
+            APP_BASE=$(basename "$APP_DIR")
+            (cd "$APP_PARENT" && zip -r -q "$OUTPUT/$DEST_ZIP" "$APP_BASE")
+            echo "Created portable zip: $DEST_ZIP"
+          else
+            echo "Warning: .app directory not found"
+          fi
+
+          # Generate SHA256 checksums
+          cd "$OUTPUT"
+          for f in *; do
+            if [ -f "$f" ]; then
+              shasum -a 256 "$f" > "$f.sha256"
+            fi
+          done
+          ls -la "$OUTPUT"
+
+      - name: Upload macOS Artifacts
+        uses: actions/upload-artifact@v7
+        with:
+          name: levyra-desktop-macos-${{ matrix.arch }}
+          path: release-assets/
+          retention-days: 7
+          if-no-files-found: error

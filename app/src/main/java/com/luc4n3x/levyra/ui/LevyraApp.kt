@@ -1920,6 +1920,8 @@ fun LevyraApp(
     }
     val youtubeMusicState by youtubeMusicViewModel.state.collectAsStateWithLifecycle()
     var showYoutubeMusic by rememberSaveable { mutableStateOf(false) }
+    var showYandexMusic by rememberSaveable { mutableStateOf(false) }
+    var showSoundCloud by rememberSaveable { mutableStateOf(false) }
 
     val state by viewModel.state.collectAsStateWithLifecycle()
     val miniPlayerStudio by viewModel.miniPlayerStudio.collectAsStateWithLifecycle()
@@ -2170,7 +2172,7 @@ fun LevyraApp(
             viewModel.clearBackupMessage()
         }
     }
-    val otherRootOverlayOpen = showYoutubeMusic || showLanguageRestartDialog || state.youtubeEngagement.comments.visible || state.showRecognition || state.showJam || state.showThemeStudio || state.showLyricsStudio || state.showHomeStudio || miniPlayerStudio.visible || navigationStudio.visible || state.showYourSound || state.showListeningInsights || state.showListeningRecap || state.sharedMediaPreview != null || showDownloadsFolder || state.playlistHitPreview != null || state.openPlaylist != null || state.showAlbum || state.showArtist || state.showQueue || state.showLyrics || state.showAudioQualityPanel
+    val otherRootOverlayOpen = showYoutubeMusic || showYandexMusic || showSoundCloud || showLanguageRestartDialog || state.youtubeEngagement.comments.visible || state.showRecognition || state.showJam || state.showThemeStudio || state.showLyricsStudio || state.showHomeStudio || miniPlayerStudio.visible || navigationStudio.visible || state.showYourSound || state.showListeningInsights || state.showListeningRecap || state.sharedMediaPreview != null || showDownloadsFolder || state.playlistHitPreview != null || state.openPlaylist != null || state.showAlbum || state.showArtist || state.showQueue || state.showLyrics || state.showAudioQualityPanel
     val rootOverlayOpen = otherRootOverlayOpen || state.showSettings
     val settingsDockVisible = state.showSettings && !otherRootOverlayOpen
     BackHandler(enabled = rootOverlayOpen || state.selectedTab != LevyraTab.Home) {
@@ -2178,6 +2180,10 @@ fun LevyraApp(
             if (youtubeMusicState.showLogin) youtubeMusicViewModel.cancelLogin()
             else if (youtubeMusicState.detail != null) youtubeMusicViewModel.closeDetail()
             else showYoutubeMusic = false
+        } else if (showYandexMusic) {
+            showYandexMusic = false
+        } else if (showSoundCloud) {
+            showSoundCloud = false
         } else if (showLanguageRestartDialog) {
             showLanguageRestartDialog = false
         } else if (state.showRecognition) {
@@ -2530,6 +2536,7 @@ fun LevyraApp(
                                 libraryViewModel, screenState, onOpenDownloads = { showDownloadsFolder = true },
                                 youtubeMusicAccount = youtubeMusicState.active,
                                 onOpenYoutubeMusic = { showYoutubeMusic = true },
+                                onOpenYandexMusic = { showYandexMusic = true },
                                 backEnabled = !rootOverlayOpen && state.selectedTab == LevyraTab.Library
                             )
                         }
@@ -3012,6 +3019,8 @@ fun LevyraApp(
                     },
                     onRemoveProfilePhoto = viewModel::clearProfilePhoto,
                     onOpenYoutubeMusic = { viewModel.closeSettings(); showYoutubeMusic = true },
+                    onOpenYandexMusic = { viewModel.closeSettings(); showYandexMusic = true },
+                    onOpenSoundCloud = { viewModel.closeSettings(); showSoundCloud = true },
                     onClose = viewModel::closeSettings
                 )
             }
@@ -3041,6 +3050,18 @@ fun LevyraApp(
                     onArtist = viewModel::openArtistFromHit,
                     onImported = viewModel::refreshYoutubeMusicImports,
                     onClose = { showYoutubeMusic = false }
+                )
+            }
+            if (showYandexMusic) {
+                val yandexContext = LocalContext.current
+                com.luc4n3x.levyra.ui.yandex.YandexMusicAccountScreen(
+                    sessionStore = com.luc4n3x.levyra.data.yandex.YandexMusicSessionStore.getInstance(yandexContext),
+                    onClose = { showYandexMusic = false }
+                )
+            }
+            if (showSoundCloud) {
+                com.luc4n3x.levyra.ui.soundcloud.SoundCloudAccountScreen(
+                    onClose = { showSoundCloud = false }
                 )
             }
 
@@ -20852,6 +20873,8 @@ private fun SettingsOverlay(
     onPickProfilePhoto: () -> Unit,
     onRemoveProfilePhoto: () -> Unit,
     onOpenYoutubeMusic: () -> Unit,
+    onOpenYandexMusic: () -> Unit = {},
+    onOpenSoundCloud: () -> Unit = {},
     onClose: () -> Unit
 ) {
     val strings = LocalLevyraStrings.current
@@ -21011,6 +21034,10 @@ private fun SettingsOverlay(
                                     onOpenAudioSettings()
                                 } else if (result.categoryId == "youtube_music") {
                                     onOpenYoutubeMusic()
+                                } else if (result.categoryId == "yandex_music") {
+                                    onOpenYandexMusic()
+                                } else if (result.categoryId == "soundcloud") {
+                                    onOpenSoundCloud()
                                 } else {
                                     activeCategory = result.categoryId
                                 }
@@ -21050,6 +21077,8 @@ private fun SettingsOverlay(
                                 when (category.id) {
                                     "audio" -> onOpenAudioSettings()
                                     "youtube_music" -> onOpenYoutubeMusic()
+                                    "yandex_music" -> onOpenYandexMusic()
+                                    "soundcloud" -> onOpenSoundCloud()
                                     else -> activeCategory = category.id
                                 }
                             }
@@ -21068,18 +21097,6 @@ private fun SettingsOverlay(
                         )
                     }
                     settingsGroupedItems { when (current) {
-                        "yandex_music" -> item {
-                            val context = LocalContext.current
-                            com.luc4n3x.levyra.ui.yandex.YandexMusicAccountScreen(
-                                sessionStore = com.luc4n3x.levyra.data.yandex.YandexMusicSessionStore.getInstance(context),
-                                onClose = { activeCategory = null }
-                            )
-                        }
-                        "soundcloud" -> item {
-                            com.luc4n3x.levyra.ui.soundcloud.SoundCloudAccountScreen(
-                                onClose = { activeCategory = null }
-                            )
-                        }
                         "network" -> item {
                             NetworkSettingsPanel(
                                 settings = networkSettings,

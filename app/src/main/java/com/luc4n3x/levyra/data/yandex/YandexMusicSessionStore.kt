@@ -10,6 +10,9 @@ import javax.crypto.Cipher
 import javax.crypto.KeyGenerator
 import javax.crypto.SecretKey
 import javax.crypto.spec.GCMParameterSpec
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import org.json.JSONObject
 
 internal class YandexMusicSessionStore(context: Context) {
@@ -17,6 +20,9 @@ internal class YandexMusicSessionStore(context: Context) {
         PREFS_NAME,
         Context.MODE_PRIVATE
     )
+
+    private val _accountFlow = MutableStateFlow(loadAccount())
+    val accountFlow: StateFlow<YandexAccount?> = _accountFlow.asStateFlow()
 
     fun loadToken(): String? {
         val encrypted = prefs.getString(KEY_TOKEN, null) ?: return null
@@ -26,6 +32,7 @@ internal class YandexMusicSessionStore(context: Context) {
     fun saveToken(token: String?) {
         if (token.isNullOrBlank()) {
             prefs.edit().remove(KEY_TOKEN).remove(KEY_ACCOUNT).apply()
+            _accountFlow.value = null
         } else {
             val encrypted = encrypt(token)
             prefs.edit().putString(KEY_TOKEN, encrypted).apply()
@@ -51,6 +58,7 @@ internal class YandexMusicSessionStore(context: Context) {
     fun saveAccount(account: YandexAccount?) {
         if (account == null) {
             prefs.edit().remove(KEY_ACCOUNT).apply()
+            _accountFlow.value = null
         } else {
             val json = JSONObject().apply {
                 put("uid", account.uid)
@@ -60,11 +68,13 @@ internal class YandexMusicSessionStore(context: Context) {
                 put("hasPlus", account.hasPlus)
             }
             prefs.edit().putString(KEY_ACCOUNT, json.toString()).apply()
+            _accountFlow.value = account
         }
     }
 
     fun clear() {
         prefs.edit().clear().apply()
+        _accountFlow.value = null
     }
 
     private fun encrypt(plainText: String): String {

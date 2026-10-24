@@ -114,7 +114,7 @@ compose.desktop {
         }
 
         nativeDistributions {
-            targetFormats(TargetFormat.Msi, TargetFormat.Exe)
+            targetFormats(TargetFormat.Dmg, TargetFormat.Pkg, TargetFormat.Msi, TargetFormat.Exe)
             packageName = "Levyra"
             packageVersion = levyraDesktopVersion
             description = "Levyra Desktop"
@@ -123,6 +123,14 @@ compose.desktop {
             licenseFile.set(rootProject.file("../LICENSE"))
             includeAllModules = true
             appResourcesRootDir.set(project.layout.projectDirectory.dir("resources"))
+
+            macOS {
+                bundleID = "com.luc4n3x.levyra.desktop"
+                dockName = "Levyra"
+                iconFile.set(rootProject.file("packaging/macos/levyra.icns"))
+                packageBuildVersion = levyraDesktopVersion
+                appStore = false
+            }
 
             windows {
                 iconFile.set(rootProject.file("packaging/windows/levyra.ico"))
