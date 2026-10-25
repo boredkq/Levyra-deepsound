@@ -28010,6 +28010,10 @@ private fun SettingsHubHeader(onClose: () -> Unit) {
 
 @Composable
 private fun SettingsSkinSelection(interfaceSettings: LevyraInterfaceSettings, onInterfaceSettings: (LevyraInterfaceSettings) -> Unit) {
+    com.luc4n3x.levyra.ui.theme.SourceSelector(
+        selected = interfaceSettings.activeSource,
+        onSelect = { onInterfaceSettings(interfaceSettings.copy(activeSource = it)) }
+    )
     SkinSelector(
         selected = interfaceSettings.skin,
         onSelect = { onInterfaceSettings(interfaceSettings.copy(skin = it)) }
