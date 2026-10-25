@@ -72,6 +72,16 @@ internal data class LibraryCatalog(
     }
 }
 
+/** Empty placeholder used while a real [LibraryCatalog] is being built off the main thread. */
+internal val EMPTY_LIBRARY_CATALOG = LibraryCatalog(
+    tracks = emptyList(),
+    albums = emptyList(),
+    artists = emptyList(),
+    mostPlayed = emptyList(),
+    recent = emptyList(),
+    offlineItems = emptyList()
+)
+
 internal fun buildLibraryCatalog(
     favorites: List<Track>,
     playlists: List<Playlist>,

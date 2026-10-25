@@ -5938,8 +5938,10 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 }
             }
             // Home feed is per-source too: drop the previous source's shelves and reload (M4).
+            // Defer until the UI is idle so the reload does not compete with the library swap and
+            // stutter the tab the user is on right after connecting.
             _state.update { it.copy(homeSections = emptyList()) }
-            loadHomeFeed()
+            loadHomeFeed(deferUntilHomeIdle = true)
         }
     }
 
@@ -7180,6 +7182,18 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 if (_state.value.similarSongs.isNotEmpty() || _state.value.similarSongsLoading) {
                     _state.update { it.copy(similarSongs = emptyList(), similarSongsLoading = false) }
                 }
+            }
+            return
+        }
+
+        // A Yandex track has no YouTube-based "similar" pool; skip the wasted per-track lookup and
+        // ranking that would otherwise run on every track change while the Player is open.
+        if (track.id.startsWith("yandex:") || track.source == "yandex_music") {
+            similarSongsJob?.cancel()
+            similarSongsJob = null
+            similarSongsSeedIdentity = playbackIdentity(track)
+            if (_state.value.similarSongs.isNotEmpty() || _state.value.similarSongsLoading) {
+                _state.update { it.copy(similarSongs = emptyList(), similarSongsLoading = false) }
             }
             return
         }

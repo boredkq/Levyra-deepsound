@@ -118,7 +118,9 @@ import com.luc4n3x.levyra.viewmodel.LevyraViewModel
 import com.luc4n3x.levyra.viewmodel.LibraryViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.rememberCoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.flow.first
 import com.luc4n3x.levyra.viewmodel.PersonalCollectionEvent
 import com.luc4n3x.levyra.ui.i18n.LevyraPersonalCollectionCatalog
@@ -287,7 +289,12 @@ internal fun LevyraLibraryScreen(
     val strings = LocalLevyraStrings.current
     val colors = MaterialTheme.colorScheme
     val deleteOfflineDownloads = rememberOfflineDeleteHandler(viewModel)
-    val catalog = remember(
+    // buildLibraryCatalog normalizes text across the whole library; for a large library (e.g.
+    // thousands of Yandex likes) that is too heavy for the main thread, and its inputs
+    // (recentListens, mostPlayedTracks) change on every played track. Compute it off-main and keep
+    // the previous catalog until the new one is ready, so playback never stutters the Library tab.
+    var catalog by remember { mutableStateOf(EMPTY_LIBRARY_CATALOG) }
+    LaunchedEffect(
         state.favorites,
         state.favoriteTimestamps,
         state.playlists,
@@ -296,15 +303,17 @@ internal fun LevyraLibraryScreen(
         state.mostPlayedTracks,
         state.followedArtists
     ) {
-        buildLibraryCatalog(
-            favorites = state.favorites,
-            playlists = state.playlists,
-            downloads = state.downloads,
-            recentListens = state.recentListens,
-            followedArtists = state.followedArtists,
-            mostPlayedTracks = state.mostPlayedTracks,
-            favoriteTimestamps = state.favoriteTimestamps
-        )
+        catalog = withContext(Dispatchers.Default) {
+            buildLibraryCatalog(
+                favorites = state.favorites,
+                playlists = state.playlists,
+                downloads = state.downloads,
+                recentListens = state.recentListens,
+                followedArtists = state.followedArtists,
+                mostPlayedTracks = state.mostPlayedTracks,
+                favoriteTimestamps = state.favoriteTimestamps
+            )
+        }
     }
 
     var categoryName by rememberSaveable { mutableStateOf(LibraryCategory.Overview.name) }
