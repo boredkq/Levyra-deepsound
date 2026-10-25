@@ -17,6 +17,9 @@ import com.luc4n3x.levyra.domain.Track
 import com.luc4n3x.levyra.feature.providers.LevyraCatalogProvider
 import com.luc4n3x.levyra.feature.providers.LevyraPlaybackProvider
 import com.luc4n3x.levyra.feature.providers.LevyraProviderMissException
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.withContext
 
 internal class YandexMusicAudioProvider(
@@ -121,11 +124,14 @@ internal class YandexMusicAudioProvider(
         val uid = sessionStore.loadAccount()?.uid.orEmpty()
         if (uid.isBlank()) return com.luc4n3x.levyra.feature.source.SourceLibrary()
 
-        // Fetch (network, on IO inside the client) the likes and the playlist headers only. Playlist
-        // tracks are loaded lazily by [loadPlaylistTracks] when a playlist is opened, so a large
-        // library (thousands of likes, many playlists) does not stall the Library tab on connect.
-        val likes = client.likedTracks(uid, currentToken)
-        val playlistHeaders = client.userPlaylists(uid, currentToken)
+        // Fetch (network, on IO inside the client) the likes and the playlist headers only, in
+        // parallel. Playlist tracks are loaded lazily by [loadPlaylistTracks] when a playlist is
+        // opened, so a large library (thousands of likes, many playlists) does not stall on connect.
+        val (likes, playlistHeaders) = coroutineScope {
+            val likesDeferred = async { client.likedTracks(uid, currentToken) }
+            val playlistsDeferred = async { client.userPlaylists(uid, currentToken) }
+            likesDeferred.await() to playlistsDeferred.await()
+        }
         return withContext(kotlinx.coroutines.Dispatchers.Default) {
             com.luc4n3x.levyra.feature.source.SourceLibrary(
                 favorites = likes.map(::toDomainTrack),
@@ -163,11 +169,17 @@ internal class YandexMusicAudioProvider(
             sections.add(com.luc4n3x.levyra.domain.HomeSection("Чарт", chart))
         }
         // Personal + new editorial playlists become one track shelf each (titles from the feed).
-        (landing.personalPlaylists + landing.newPlaylists).forEach { ref ->
-            val raw = client.playlistTracks(ref.uid, ref.kind, currentToken)
-            val tracks = withContext(kotlinx.coroutines.Dispatchers.Default) { raw.map(::toDomainTrack) }
-            if (tracks.isNotEmpty()) {
-                sections.add(com.luc4n3x.levyra.domain.HomeSection(ref.title, tracks))
+        // Fetch all playlists' tracks in parallel; keep the feed order for the shelves.
+        val refs = landing.personalPlaylists + landing.newPlaylists
+        val playlistTrackLists = coroutineScope {
+            refs.map { ref -> async { client.playlistTracks(ref.uid, ref.kind, currentToken) } }.awaitAll()
+        }
+        withContext(kotlinx.coroutines.Dispatchers.Default) {
+            refs.forEachIndexed { index, ref ->
+                val tracks = playlistTrackLists[index].map(::toDomainTrack)
+                if (tracks.isNotEmpty()) {
+                    sections.add(com.luc4n3x.levyra.domain.HomeSection(ref.title, tracks))
+                }
             }
         }
         return sections
@@ -194,7 +206,9 @@ internal class YandexMusicAudioProvider(
         durationMs = yt.durationMs,
         streamUrl = "",
         videoUrl = "",
-        thumbnailUrl = yt.coverUrl,
+        // Row thumbnails only need a small image; the player uses largeThumbnailUrl. Downsizing the
+        // Yandex cover (served at 400x400) to 200x200 cuts list decode/memory/bandwidth.
+        thumbnailUrl = yt.coverUrl.replace("400x400", "200x200"),
         largeThumbnailUrl = yt.coverUrl,
         source = PROVIDER_ID,
         moodTags = emptySet(),

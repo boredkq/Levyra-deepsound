@@ -272,42 +272,87 @@ internal fun filterLibraryTracks(
                 .any { it.contains(normalizedQuery) }
         }
     }
-    return when (sort) {
-        LibrarySort.Recent -> {
-            if (recencyProvider != null) {
-                filtered.sortedWith(
-                    libraryValueOrder<Track>(direction) { recencyProvider(it) }
-                        .thenBy { normalizeLibraryText(it.title) }
-                        .thenBy { normalizeLibraryText(it.artist) }
-                        .thenBy { it.id }
-                )
-            } else {
-                if (direction == LibrarySort.Recent.defaultDirection) filtered else filtered.reversed()
-            }
-        }
-        LibrarySort.Title -> filtered.sortedWith(
-            libraryTextOrder<Track>(direction) { it.title }
-                .thenBy { normalizeLibraryText(it.artist) }
-                .thenBy { it.id }
+    if (sort == LibrarySort.Recent && recencyProvider == null) {
+        return if (direction == LibrarySort.Recent.defaultDirection) filtered else filtered.reversed()
+    }
+    // Decorate once: normalize each track's text a single time instead of on every comparison
+    // (the comparators used to re-run NFD+regex normalization O(n log n) times — heavy for a large
+    // library). Sort the decorated list, then unwrap. Output order is unchanged.
+    val decorated = filtered.map { track ->
+        SortableLibraryTrack(
+            track = track,
+            title = normalizeLibraryText(track.title),
+            artist = normalizeLibraryText(track.artist),
+            album = normalizeLibraryText(track.album)
         )
-        LibrarySort.Artist -> filtered.sortedWith(
-            libraryTextOrder<Track>(direction) { it.artist }
-                .thenBy { normalizeLibraryText(it.title) }
-                .thenBy { it.id }
+    }
+    val ordered = when (sort) {
+        LibrarySort.Recent -> decorated.sortedWith(
+            decoratedValueOrder(direction) { recencyProvider!!(it.track) }
+                .thenBy { it.title }
+                .thenBy { it.artist }
+                .thenBy { it.track.id }
         )
-        LibrarySort.Album -> filtered.sortedWith(
-            libraryTextOrder<Track>(direction) { it.album }
-                .thenBy { it.discNumber }
-                .thenBy { it.trackNumber }
-                .thenBy { normalizeLibraryText(it.title) }
-                .thenBy { it.id }
+        LibrarySort.Title -> decorated.sortedWith(
+            decoratedTextOrder(direction) { it.title }
+                .thenBy { it.artist }
+                .thenBy { it.track.id }
         )
-        LibrarySort.Duration -> filtered.sortedWith(
-            libraryValueOrder<Track>(direction) { it.durationMs }
-                .thenBy { normalizeLibraryText(it.title) }
-                .thenBy { normalizeLibraryText(it.artist) }
-                .thenBy { it.id }
+        LibrarySort.Artist -> decorated.sortedWith(
+            decoratedTextOrder(direction) { it.artist }
+                .thenBy { it.title }
+                .thenBy { it.track.id }
         )
+        LibrarySort.Album -> decorated.sortedWith(
+            decoratedTextOrder(direction) { it.album }
+                .thenBy { it.track.discNumber }
+                .thenBy { it.track.trackNumber }
+                .thenBy { it.title }
+                .thenBy { it.track.id }
+        )
+        LibrarySort.Duration -> decorated.sortedWith(
+            decoratedValueOrder(direction) { it.track.durationMs }
+                .thenBy { it.title }
+                .thenBy { it.artist }
+                .thenBy { it.track.id }
+        )
+    }
+    return ordered.map { it.track }
+}
+
+/** A library track with its text fields pre-normalized once, for cheap repeated comparisons. */
+private class SortableLibraryTrack(
+    val track: Track,
+    val title: String,
+    val artist: String,
+    val album: String
+)
+
+private fun decoratedTextOrder(
+    direction: LibrarySortDirection,
+    selector: (SortableLibraryTrack) -> String
+): Comparator<SortableLibraryTrack> = Comparator { first, second ->
+    val left = selector(first)
+    val right = selector(second)
+    when {
+        left.isEmpty() && right.isEmpty() -> 0
+        left.isEmpty() -> 1
+        right.isEmpty() -> -1
+        else -> direction.orient(left.compareTo(right))
+    }
+}
+
+private fun decoratedValueOrder(
+    direction: LibrarySortDirection,
+    selector: (SortableLibraryTrack) -> Long
+): Comparator<SortableLibraryTrack> = Comparator { first, second ->
+    val left = selector(first)
+    val right = selector(second)
+    when {
+        left <= 0L && right <= 0L -> 0
+        left <= 0L -> 1
+        right <= 0L -> -1
+        else -> direction.orient(left.compareTo(right))
     }
 }
 
