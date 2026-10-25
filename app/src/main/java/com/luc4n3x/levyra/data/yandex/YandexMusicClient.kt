@@ -7,6 +7,9 @@ import java.util.UUID
 import java.util.concurrent.TimeUnit
 import java.util.regex.Pattern
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.withContext
 import okhttp3.FormBody
 import okhttp3.OkHttpClient
@@ -143,22 +146,26 @@ internal class YandexMusicClient(
         tracksByIds(ids, token)
     }
 
-    /** Batch-fetch full track metadata for [ids] via POST `/tracks`, chunked to stay within limits. */
+    /** Batch-fetch full track metadata for [ids] via POST `/tracks`, chunked and fetched in parallel. */
     suspend fun tracksByIds(ids: List<String>, token: String?): List<YandexTrack> = withContext(Dispatchers.IO) {
         if (ids.isEmpty()) return@withContext emptyList()
-        val byId = mutableMapOf<String, YandexTrack>()
-        for (chunk in ids.chunked(TRACK_BATCH_SIZE)) {
-            val body = FormBody.Builder().add("track-ids", chunk.joinToString(",")).build()
-            val builder = Request.Builder()
-                .url("https://api.music.yandex.net/tracks")
-                .header("User-Agent", "Yandex-Music-API")
-                .post(body)
-            if (!token.isNullOrBlank()) builder.header("Authorization", "OAuth $token")
-            httpClient.newCall(builder.build()).execute().use { response ->
-                if (!response.isSuccessful) return@use
-                parseTrackArray(response.body?.string().orEmpty()).forEach { byId[it.id] = it }
-            }
+        val chunkResults = coroutineScope {
+            ids.chunked(TRACK_BATCH_SIZE).map { chunk ->
+                async {
+                    val body = FormBody.Builder().add("track-ids", chunk.joinToString(",")).build()
+                    val builder = Request.Builder()
+                        .url("https://api.music.yandex.net/tracks")
+                        .header("User-Agent", "Yandex-Music-API")
+                        .post(body)
+                    if (!token.isNullOrBlank()) builder.header("Authorization", "OAuth $token")
+                    httpClient.newCall(builder.build()).execute().use { response ->
+                        if (!response.isSuccessful) emptyList() else parseTrackArray(response.body?.string().orEmpty())
+                    }
+                }
+            }.awaitAll()
         }
+        val byId = HashMap<String, YandexTrack>()
+        chunkResults.forEach { chunk -> chunk.forEach { byId[it.id] = it } }
         // Preserve the requested order; drop ids the server did not return (unavailable tracks).
         ids.mapNotNull { byId[it] }
     }

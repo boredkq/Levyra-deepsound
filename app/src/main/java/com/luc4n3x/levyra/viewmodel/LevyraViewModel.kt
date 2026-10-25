@@ -13643,7 +13643,9 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 if (playbackStateChanged) {
                     updateWidget()
                 }
-                delay(if (snapshot.showLyrics) 50L else 500L)
+                // 10 Hz while lyrics are visible is smooth enough for line highlighting and halves
+                // the state-emission rate vs the old 20 Hz; 2 Hz otherwise.
+                delay(if (snapshot.showLyrics) 100L else 500L)
             }
         }
     }
