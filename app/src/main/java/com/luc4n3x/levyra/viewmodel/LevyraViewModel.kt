@@ -5306,6 +5306,19 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     private suspend fun fetchHomeFeedSections(languageCode: String): List<HomeSection> {
+        // When a non-YouTube source is active, the home feed comes from that source (M4).
+        if (_state.value.interfaceSettings.activeSource ==
+            com.luc4n3x.levyra.feature.source.SourceId.YANDEX
+        ) {
+            return try {
+                yandexMusicProvider.loadHomeSections()
+            } catch (error: CancellationException) {
+                throw error
+            } catch (error: Exception) {
+                Timber.w(error, "Yandex home feed refresh failed")
+                emptyList()
+            }
+        }
         return try {
             repository.homeFeed(languageCode)
         } catch (error: CancellationException) {
@@ -5991,6 +6004,9 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                     refreshForgottenFavorites()
                 }
             }
+            // Home feed is per-source too: drop the previous source's shelves and reload (M4).
+            _state.update { it.copy(homeSections = emptyList()) }
+            loadHomeFeed()
         }
     }
 

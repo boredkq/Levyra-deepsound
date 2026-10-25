@@ -218,6 +218,13 @@ internal class YandexMusicClient(
         }
     }
 
+    /** The personalized home feed (`/landing3`). Returns an empty landing when signed out. */
+    suspend fun landing(token: String?): YandexLanding = withContext(Dispatchers.IO) {
+        if (token.isNullOrBlank()) return@withContext YandexLanding()
+        val url = "https://api.music.yandex.net/landing3?blocks=personalplaylists,chart,new-releases,new-playlists"
+        authedGet(url, token)?.let(::parseLanding) ?: YandexLanding()
+    }
+
     private fun authedGet(url: String, token: String?): String? {
         val builder = Request.Builder()
             .url(url)
@@ -374,6 +381,46 @@ internal fun parsePlaylists(body: String): List<YandexPlaylist> {
             )
         }
     }
+}
+
+/**
+ * Parse `/landing3` into the track-shelf-friendly [YandexLanding]. `result.blocks[]` each carry a
+ * `type` and `entities[]`; entity payloads differ per block (chart wraps a track, playlist blocks
+ * carry a playlist object — nested under `data` for personal playlists).
+ */
+internal fun parseLanding(body: String): YandexLanding {
+    val blocks = JSONObject(body).optJSONObject("result")?.optJSONArray("blocks")
+        ?: return YandexLanding()
+    val chart = mutableListOf<YandexTrack>()
+    val personal = mutableListOf<YandexPlaylistRef>()
+    val newPlaylists = mutableListOf<YandexPlaylistRef>()
+    for (i in 0 until blocks.length()) {
+        val block = blocks.optJSONObject(i) ?: continue
+        val entities = block.optJSONArray("entities") ?: continue
+        when (block.optString("type")) {
+            "chart" -> for (e in 0 until entities.length()) {
+                val track = entities.optJSONObject(e)?.optJSONObject("data")?.optJSONObject("track")
+                track?.let(::parseTrackItem)?.let(chart::add)
+            }
+            "personal-playlists" -> for (e in 0 until entities.length()) {
+                // Playlist object is nested one level deeper for personal playlists.
+                val inner = entities.optJSONObject(e)?.optJSONObject("data")?.optJSONObject("data")
+                playlistRef(inner)?.let(personal::add)
+            }
+            "new-playlists" -> for (e in 0 until entities.length()) {
+                playlistRef(entities.optJSONObject(e)?.optJSONObject("data"))?.let(newPlaylists::add)
+            }
+        }
+    }
+    return YandexLanding(chart = chart, personalPlaylists = personal, newPlaylists = newPlaylists)
+}
+
+private fun playlistRef(obj: JSONObject?): YandexPlaylistRef? {
+    if (obj == null) return null
+    val uid = if (obj.has("uid")) obj.get("uid").toString() else ""
+    val kind = if (obj.has("kind")) obj.get("kind").toString() else ""
+    if (uid.isBlank() || kind.isBlank()) return null
+    return YandexPlaylistRef(uid = uid, kind = kind, title = obj.optString("title").ifBlank { "Плейлист" })
 }
 
 /** One entry of a playlist's track list: either a fully embedded track or just an id to hydrate. */

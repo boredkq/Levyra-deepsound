@@ -45,4 +45,10 @@ interface MusicSource {
      * override; sources that offer [SourceCapability.LIBRARY] return real data here (M3).
      */
     suspend fun library(): SourceLibrary = SourceLibrary()
+
+    /**
+     * The source's personalized home feed as [com.luc4n3x.levyra.domain.HomeSection] shelves.
+     * Defaults to empty; sources that offer [SourceCapability.HOME] return real shelves here (M4).
+     */
+    suspend fun homeFeed(): List<com.luc4n3x.levyra.domain.HomeSection> = emptyList()
 }

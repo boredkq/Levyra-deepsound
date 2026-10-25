@@ -106,4 +106,40 @@ class YandexMusicClientParseTest {
         assertEquals(listOf("10", "11"), parsed.missingIds)
         assertEquals(3, parsed.ordered.size)
     }
+
+    @Test
+    fun landing_parsesChartTracks_andPlaylistRefs_ignoringAlbumReleases() {
+        val body = """
+            {"result":{"blocks":[
+              {"type":"personal-playlists","entities":[
+                {"data":{"data":{"uid":692529388,"kind":119108029,"title":"Дежавю"}}}
+              ]},
+              {"type":"new-releases","entities":[
+                {"data":{"id":123,"title":"Album","type":"album"}}
+              ]},
+              {"type":"new-playlists","entities":[
+                {"data":{"uid":103372440,"kind":2616,"title":"Новинки"}}
+              ]},
+              {"type":"chart","entities":[
+                {"data":{"track":{"id":"153919218","title":"Песня","artists":[{"name":"A"}],"albums":[{"title":"Al"}]},"chart":{"position":1}}}
+              ]}
+            ]}}
+        """.trimIndent()
+        val landing = parseLanding(body)
+        assertEquals(listOf("153919218"), landing.chart.map { it.id })
+        assertEquals("Песня", landing.chart.single().title)
+        assertEquals(listOf("692529388"), landing.personalPlaylists.map { it.uid })
+        assertEquals(listOf("119108029"), landing.personalPlaylists.map { it.kind })
+        assertEquals("Дежавю", landing.personalPlaylists.single().title)
+        assertEquals(listOf("2616"), landing.newPlaylists.map { it.kind })
+        assertEquals("Новинки", landing.newPlaylists.single().title)
+    }
+
+    @Test
+    fun landing_missingBlocks_isEmpty() {
+        val landing = parseLanding("""{"result":{}}""")
+        assertTrue(landing.chart.isEmpty())
+        assertTrue(landing.personalPlaylists.isEmpty())
+        assertTrue(landing.newPlaylists.isEmpty())
+    }
 }
