@@ -20686,6 +20686,7 @@ private fun SettingsOverlay(
             SettingsCategoryMeta("jam", categoryTitle(strings.jamTitle), strings.jamSubtitle, Icons.Rounded.Groups, LevyraPink, SettingsHubGroup.Listening),
             SettingsCategoryMeta("downloads", categoryTitle(strings.downloads), "${strings.wifiOnly} · ${strings.simultaneousDownloads}", Icons.Rounded.Download, LevyraBlue, SettingsHubGroup.Library),
             SettingsCategoryMeta("backup", strings.vaultTitle, "${strings.backupNow} · ${strings.restoreBackup}", Icons.Rounded.History, LevyraBlue, SettingsHubGroup.Library),
+            SettingsCategoryMeta("music_source", "Источник музыки", "YouTube Music · Яндекс Музыка", Icons.Rounded.LibraryMusic, LevyraViolet, SettingsHubGroup.Accounts),
             SettingsCategoryMeta("youtube_music", "YouTube Music", com.luc4n3x.levyra.ui.i18n.youtubeMusicCopy(strings.code).introduction, Icons.Rounded.AccountCircle, LevyraCyan, SettingsHubGroup.Accounts),
             SettingsCategoryMeta("yandex_music", "Яндекс Музыка", "Подключение аккаунта · Моя волна · 320 kbps", Icons.Rounded.GraphicEq, LevyraCyan, SettingsHubGroup.Accounts),
             SettingsCategoryMeta("soundcloud", "SoundCloud", "Публичный доступ · Ремиксы и стриминг", Icons.Rounded.GraphicEq, LevyraPink, SettingsHubGroup.Accounts),
@@ -20914,6 +20915,35 @@ private fun SettingsOverlay(
                                     onSaveAudD,
                                     onClearAudD
                                 )
+                            }
+                        }
+                        "music_source" -> {
+                            val sources = com.luc4n3x.levyra.feature.source.SourceId.entries
+                            sources.forEachIndexed { index, source ->
+                                item(key = "music-source-${source.name}") {
+                                    SettingsSourceOption(
+                                        icon = if (source == com.luc4n3x.levyra.feature.source.SourceId.YANDEX) {
+                                            Icons.Rounded.GraphicEq
+                                        } else {
+                                            Icons.Rounded.AccountCircle
+                                        },
+                                        title = source.label,
+                                        subtitle = if (source == com.luc4n3x.levyra.feature.source.SourceId.YANDEX) {
+                                            "Моя волна, библиотека, поиск Яндекса"
+                                        } else {
+                                            "Поиск, чарты и радио YouTube"
+                                        },
+                                        accent = if (source == com.luc4n3x.levyra.feature.source.SourceId.YANDEX) LevyraCyan else LevyraPink,
+                                        selected = interfaceSettings.activeSource == source,
+                                        groupIndex = index,
+                                        groupCount = sources.size,
+                                        onClick = {
+                                            if (interfaceSettings.activeSource != source) {
+                                                onInterfaceSettings(interfaceSettings.copy(activeSource = source))
+                                            }
+                                        }
+                                    )
+                                }
                             }
                         }
                         "skins" -> {
@@ -23226,6 +23256,32 @@ private fun SettingsButton(icon: ImageVector, title: String, subtitle: String, e
                 tint = LevyraMuted.copy(alpha = 0.7f),
                 modifier = Modifier.size(22.dp)
             )
+        }
+    }
+}
+
+@Composable
+private fun SettingsSourceOption(
+    icon: ImageVector,
+    title: String,
+    subtitle: String,
+    accent: Color,
+    selected: Boolean,
+    groupIndex: Int,
+    groupCount: Int,
+    onClick: () -> Unit
+) {
+    SettingsTile(onClick = onClick, groupIndex = groupIndex, groupCount = groupCount) {
+        Row(
+            modifier = Modifier.padding(start = 14.dp, end = 12.dp, top = 14.dp, bottom = 14.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(14.dp)
+        ) {
+            SettingsTileIcon(icon = icon, accent = accent)
+            SettingsTileText(title = title, subtitle = subtitle, modifier = Modifier.weight(1f))
+            if (selected) {
+                Icon(Icons.Rounded.Check, null, tint = accent, modifier = Modifier.size(22.dp))
+            }
         }
     }
 }
@@ -28164,10 +28220,7 @@ private fun SettingsHubHeader(onClose: () -> Unit) {
 
 @Composable
 private fun SettingsSkinSelection(interfaceSettings: LevyraInterfaceSettings, onInterfaceSettings: (LevyraInterfaceSettings) -> Unit) {
-    com.luc4n3x.levyra.ui.theme.SourceSelector(
-        selected = interfaceSettings.activeSource,
-        onSelect = { onInterfaceSettings(interfaceSettings.copy(activeSource = it)) }
-    )
+    // Source switch (YouTube ⇄ Yandex) now lives in its own "Источник музыки" settings category.
     SkinSelector(
         selected = interfaceSettings.skin,
         onSelect = { onInterfaceSettings(interfaceSettings.copy(skin = it)) }
