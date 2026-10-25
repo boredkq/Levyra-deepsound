@@ -27,6 +27,10 @@ internal class YandexMusicAudioProvider(
     override val displayName: String = "Яндекс Музыка"
     override val priority: Int = 20
 
+    // Per-origin dispatch: only ever handle Yandex-origin tracks.
+    override fun owns(track: Track): Boolean =
+        track.source == PROVIDER_ID || track.id.startsWith("yandex:")
+
     private val token: String?
         get() = sessionStore.loadToken()
 

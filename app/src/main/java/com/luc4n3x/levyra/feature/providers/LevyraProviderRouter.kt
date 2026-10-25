@@ -21,6 +21,10 @@ import java.util.concurrent.atomic.AtomicLong
 internal const val DEFAULT_PLAYBACK_PROVIDER_TIMEOUT_MS = 32_000L
 internal const val DEFAULT_OFFLINE_PROVIDER_TIMEOUT_MS = 62_000L
 
+/** A track belongs to Yandex when its source or id namespace marks it so. */
+internal fun isYandexOriginTrack(track: Track): Boolean =
+    track.source == "yandex_music" || track.id.startsWith("yandex:")
+
 interface LevyraCatalogProvider {
     val id: String
     val priority: Int
@@ -32,6 +36,12 @@ interface LevyraCatalogProvider {
 interface LevyraPlaybackProvider {
     val id: String
     val priority: Int
+    /**
+     * Whether this provider should handle [track]. Default true keeps origin-agnostic
+     * providers (e.g. the playback cache) and legacy providers unchanged; origin-specific
+     * providers override it so a track is only ever resolved by its own source.
+     */
+    fun owns(track: Track): Boolean = true
     suspend fun resolve(track: Track, videoMode: Boolean): Track
     suspend fun resolveForOffline(track: Track): Track
 }
@@ -195,6 +205,9 @@ class LevyraNativePlaybackProvider(
     override val id: String = "levyra_native"
     override val priority: Int = 10
 
+    // The YouTube/native resolver must not attempt Yandex-origin tracks.
+    override fun owns(track: Track): Boolean = !isYandexOriginTrack(track)
+
     override suspend fun resolve(track: Track, videoMode: Boolean): Track {
         return resolver.resolve(track, videoMode)
     }
@@ -262,7 +275,7 @@ class LevyraProviderRouter(
     }
 
     suspend fun resolve(track: Track, videoMode: Boolean = false): Track {
-        return executePlayback("playback", playbackTimeoutMs) { provider ->
+        return executePlayback("playback", playbackTimeoutMs, track) { provider ->
             val result = provider.resolve(track, videoMode)
             if (videoMode && !result.hasVideoPlaybackPayload()) {
                 throw LevyraProviderMissException("Provider ${provider.id} privo di una traccia video")
@@ -272,7 +285,7 @@ class LevyraProviderRouter(
     }
 
     suspend fun resolveForOffline(track: Track): Track {
-        return executePlayback("offline", offlinePlaybackTimeoutMs) { it.resolveForOffline(track) }
+        return executePlayback("offline", offlinePlaybackTimeoutMs, track) { it.resolveForOffline(track) }
     }
 
     fun health(): List<LevyraProviderHealth> = healthTracker.snapshot()
@@ -307,10 +320,11 @@ class LevyraProviderRouter(
     private suspend fun executePlayback(
         operation: String,
         timeoutMs: Long,
+        track: Track,
         block: suspend (LevyraPlaybackProvider) -> Track
     ): Track {
         var lastError: Throwable? = null
-        for (provider in orderedPlaybackProviders()) {
+        for (provider in orderedPlaybackProviders(track)) {
             val startedAt = System.nanoTime()
             try {
                 val result = withTimeout(timeoutMs) { block(provider) }
@@ -335,9 +349,11 @@ class LevyraProviderRouter(
         return source.sortedBy { healthTracker.score(it.id, it.priority) }
     }
 
-    private fun orderedPlaybackProviders(): List<LevyraPlaybackProvider> {
-        val available = playbackProviders.filter { healthTracker.available(it.id) }
-        val source = available.ifEmpty { playbackProviders }
+    private fun orderedPlaybackProviders(track: Track): List<LevyraPlaybackProvider> {
+        val owning = playbackProviders.filter { it.owns(track) }
+        val base = owning.ifEmpty { playbackProviders }
+        val available = base.filter { healthTracker.available(it.id) }
+        val source = available.ifEmpty { base }
         return source.sortedBy { healthTracker.score(it.id, it.priority) }
     }
 
