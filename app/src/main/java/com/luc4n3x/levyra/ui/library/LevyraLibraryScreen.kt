@@ -397,20 +397,34 @@ internal fun LevyraLibraryScreen(
     val visiblePlaylists = remember(scopedPlaylists, query, sort, direction) {
         filterLibraryPlaylists(scopedPlaylists, query, sort, direction)
     }
-    val visibleAlbums = remember(catalog.albums, query, sort, direction) {
-        filterLibraryAlbums(catalog.albums, query, sort, direction)
+    // Albums/artists derive from the (off-main) catalog, so a new catalog instance on every played
+    // track would otherwise re-sort them on the main thread. Compute off-main, keep previous.
+    var visibleAlbums by remember { mutableStateOf<List<LibraryAlbum>>(emptyList()) }
+    LaunchedEffect(catalog.albums, query, sort, direction) {
+        visibleAlbums = withContext(Dispatchers.Default) {
+            filterLibraryAlbums(catalog.albums, query, sort, direction)
+        }
     }
-    val visibleArtists = remember(catalog.artists, query, sort, direction) {
-        filterLibraryArtists(catalog.artists, query, sort, direction)
+    var visibleArtists by remember { mutableStateOf<List<LibraryArtist>>(emptyList()) }
+    LaunchedEffect(catalog.artists, query, sort, direction) {
+        visibleArtists = withContext(Dispatchers.Default) {
+            filterLibraryArtists(catalog.artists, query, sort, direction)
+        }
     }
-    val visibleTracks = remember(catalog.tracks, query, sort, direction, catalog.trackRecency) {
-        filterLibraryTracks(
-            tracks = catalog.tracks,
-            query = query,
-            sort = sort,
-            direction = direction,
-            recencyProvider = catalog::recencyOf
-        )
+    // filterLibraryTracks sorts the whole song list with text-normalizing comparators — heavy for
+    // a large library and re-run whenever the catalog changes (i.e. on every played track). Compute
+    // it off-main too, keeping the previous result until the new one is ready.
+    var visibleTracks by remember { mutableStateOf<List<Track>>(emptyList()) }
+    LaunchedEffect(catalog.tracks, query, sort, direction, catalog.trackRecency) {
+        visibleTracks = withContext(Dispatchers.Default) {
+            filterLibraryTracks(
+                tracks = catalog.tracks,
+                query = query,
+                sort = sort,
+                direction = direction,
+                recencyProvider = catalog::recencyOf
+            )
+        }
     }
     var localTabName by rememberSaveable { mutableStateOf(LocalLibraryTab.Songs.name) }
     val localTab = LocalLibraryTab.entries.firstOrNull { it.name == localTabName } ?: LocalLibraryTab.Songs
