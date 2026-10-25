@@ -51,4 +51,10 @@ interface MusicSource {
      * Defaults to empty; sources that offer [SourceCapability.HOME] return real shelves here (M4).
      */
     suspend fun homeFeed(): List<com.luc4n3x.levyra.domain.HomeSection> = emptyList()
+
+    /**
+     * The next batch of endless-radio/autoplay tracks (Yandex «Моя волна», M5). Defaults to empty;
+     * sources that offer [SourceCapability.RADIO] return real tracks here.
+     */
+    suspend fun radio(seedTrackId: String?, excludeIds: Set<String>, limit: Int): List<Track> = emptyList()
 }

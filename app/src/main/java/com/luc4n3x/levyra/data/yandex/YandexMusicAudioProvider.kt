@@ -24,7 +24,8 @@ internal class YandexMusicAudioProvider(
     private val sessionStore: YandexMusicSessionStore
 ) : HighQualityAudioProvider, LevyraCatalogProvider, LevyraPlaybackProvider,
     com.luc4n3x.levyra.feature.source.SourceLibraryProvider,
-    com.luc4n3x.levyra.feature.source.SourceHomeProvider {
+    com.luc4n3x.levyra.feature.source.SourceHomeProvider,
+    com.luc4n3x.levyra.feature.source.SourceRadioProvider {
 
     override val id: String = PROVIDER_ID
     override val displayName: String = "Яндекс Музыка"
@@ -172,6 +173,19 @@ internal class YandexMusicAudioProvider(
         return sections
     }
 
+    override suspend fun radioTracks(seedTrackId: String?, excludeIds: Set<String>, limit: Int): List<Track> {
+        val currentToken = token ?: return emptyList()
+        // «Моя волна»: the personal wave; the seed id advances the rotor queue for continuation.
+        val raw = client.rotorStationTracks(MY_WAVE_STATION, currentToken, queue = seedTrackId)
+        return withContext(kotlinx.coroutines.Dispatchers.Default) {
+            raw.asSequence()
+                .map(::toDomainTrack)
+                .filter { it.id !in excludeIds }
+                .take(limit.coerceAtLeast(0))
+                .toList()
+        }
+    }
+
     private fun toDomainTrack(yt: YandexTrack): Track = Track(
         id = "yandex:${yt.id}",
         title = yt.title,
@@ -211,5 +225,6 @@ internal class YandexMusicAudioProvider(
     companion object {
         const val PROVIDER_ID = "yandex_music"
         private const val STREAM_TTL_MS = 2 * 60 * 60 * 1000L
+        private const val MY_WAVE_STATION = "user:onyourwave"
     }
 }

@@ -142,4 +142,23 @@ class YandexMusicClientParseTest {
         assertTrue(landing.personalPlaylists.isEmpty())
         assertTrue(landing.newPlaylists.isEmpty())
     }
+
+    @Test
+    fun rotorSequence_mapsTracks_inOrder() {
+        val body = """
+            {"result":{"id":"user:onyourwave","radioSessionId":"s1","batchId":"b1","sequence":[
+              {"type":"track","track":{"id":"110550760","title":"Memory Reboot","artists":[{"name":"VOj"}],"albums":[{"title":"Memory Reboot"}],"durationMs":209410}},
+              {"type":"track","track":{"id":"222","title":"Second","artists":[{"name":"X"}]}}
+            ]}}
+        """.trimIndent()
+        val tracks = parseRotorSequence(body)
+        assertEquals(listOf("110550760", "222"), tracks.map { it.id })
+        assertEquals("Memory Reboot", tracks.first().title)
+        assertEquals("VOj", tracks.first().artist)
+    }
+
+    @Test
+    fun rotorSequence_missingSequence_isEmpty() {
+        assertTrue(parseRotorSequence("""{"result":{}}""").isEmpty())
+    }
 }
