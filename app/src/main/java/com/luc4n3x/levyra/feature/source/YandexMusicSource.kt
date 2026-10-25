@@ -17,13 +17,15 @@ import com.luc4n3x.levyra.feature.providers.LevyraPlaybackProvider
  */
 internal class YandexMusicSource(
     private val catalog: LevyraCatalogProvider,
-    private val playback: LevyraPlaybackProvider
+    private val playback: LevyraPlaybackProvider,
+    private val libraryProvider: SourceLibraryProvider? = null
 ) : MusicSource {
 
     override val id: SourceId = SourceId.YANDEX
 
-    // Browse/radio/library capabilities are declared in their milestones once implemented.
-    override fun capabilities(): Set<SourceCapability> = emptySet()
+    // M3 adds the user library; browse/radio capabilities are declared in their own milestones.
+    override fun capabilities(): Set<SourceCapability> =
+        if (libraryProvider != null) setOf(SourceCapability.LIBRARY) else emptySet()
 
     override fun owns(track: Track): Boolean =
         track.source == YANDEX_SOURCE || track.id.startsWith(YANDEX_ID_PREFIX)
@@ -36,6 +38,9 @@ internal class YandexMusicSource(
 
     override suspend fun resolveForOffline(track: Track): Track =
         playback.resolveForOffline(track)
+
+    override suspend fun library(): SourceLibrary =
+        libraryProvider?.loadLibrary() ?: SourceLibrary()
 
     private companion object {
         const val YANDEX_SOURCE = "yandex_music"

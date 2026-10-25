@@ -38,4 +38,11 @@ interface MusicSource {
 
     /** Resolve a [Track] suitable for an offline download copy. */
     suspend fun resolveForOffline(track: Track): Track
+
+    /**
+     * The signed-in user's library for this source (liked songs + playlists), in domain types.
+     * Defaults to empty so a source without a server-backed library (or a signed-out one) needs no
+     * override; sources that offer [SourceCapability.LIBRARY] return real data here (M3).
+     */
+    suspend fun library(): SourceLibrary = SourceLibrary()
 }
