@@ -921,7 +921,8 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             yandexMusicProvider,
             soundCloudProvider,
             LevyraNativePlaybackProvider(resolver)
-        )
+        ),
+        activeSource = { _state.value.interfaceSettings.activeSource }
     )
     private val playlistImporter by lazy {
         com.luc4n3x.levyra.data.UniversalPlaylistImporter(

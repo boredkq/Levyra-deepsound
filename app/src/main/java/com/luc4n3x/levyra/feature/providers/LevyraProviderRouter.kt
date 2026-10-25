@@ -8,6 +8,7 @@ import com.luc4n3x.levyra.domain.AlbumHit
 import com.luc4n3x.levyra.domain.SearchResults
 import com.luc4n3x.levyra.domain.Track
 import com.luc4n3x.levyra.domain.hasVideoPlaybackPayload
+import com.luc4n3x.levyra.feature.source.SourceId
 import com.luc4n3x.levyra.player.LevyraMediaCache
 import com.luc4n3x.levyra.player.fullyCachedPlaybackTrack
 import kotlinx.coroutines.CancellationException
@@ -28,6 +29,12 @@ internal fun isYandexOriginTrack(track: Track): Boolean =
 interface LevyraCatalogProvider {
     val id: String
     val priority: Int
+    /**
+     * The source this catalog serves, or null when it is origin-agnostic (e.g. the in-memory
+     * cache). The router only queries providers whose source matches the active one (plus the
+     * agnostic ones), so switching the active source changes search/browse results.
+     */
+    val sourceId: SourceId? get() = null
     suspend fun searchEverything(query: String, languageCode: String): SearchResults
     suspend fun albumDetail(album: AlbumHit, languageCode: String): AlbumDetail?
     suspend fun playlist(playlistId: String, languageCode: String, limit: Int): YoutubeMusicPlaylistDetail?
@@ -124,6 +131,7 @@ class YoutubeMusicCatalogProvider(
 ) : LevyraCatalogProvider {
     override val id: String = "youtube_music"
     override val priority: Int = 10
+    override val sourceId: SourceId = SourceId.YOUTUBE
 
     override suspend fun searchEverything(query: String, languageCode: String): SearchResults {
         return repository.searchEverything(query, languageCode)
@@ -223,7 +231,8 @@ class LevyraProviderRouter(
     private val healthTracker: LevyraProviderHealthTracker = LevyraProviderHealthTracker(),
     private val catalogTimeoutMs: Long = 18_000L,
     private val playbackTimeoutMs: Long = DEFAULT_PLAYBACK_PROVIDER_TIMEOUT_MS,
-    private val offlinePlaybackTimeoutMs: Long = DEFAULT_OFFLINE_PROVIDER_TIMEOUT_MS
+    private val offlinePlaybackTimeoutMs: Long = DEFAULT_OFFLINE_PROVIDER_TIMEOUT_MS,
+    private val activeSource: () -> SourceId = { SourceId.YOUTUBE }
 ) {
     private val catalogProviders = catalogProviders.distinctBy { it.id }
     private val playbackProviders = playbackProviders.distinctBy { it.id }
@@ -344,8 +353,11 @@ class LevyraProviderRouter(
     }
 
     private fun orderedCatalogProviders(): List<LevyraCatalogProvider> {
-        val available = catalogProviders.filter { healthTracker.available(it.id) }
-        val source = available.ifEmpty { catalogProviders }
+        val active = activeSource()
+        val matching = catalogProviders.filter { it.sourceId == null || it.sourceId == active }
+        val base = matching.ifEmpty { catalogProviders }
+        val available = base.filter { healthTracker.available(it.id) }
+        val source = available.ifEmpty { base }
         return source.sortedBy { healthTracker.score(it.id, it.priority) }
     }
 

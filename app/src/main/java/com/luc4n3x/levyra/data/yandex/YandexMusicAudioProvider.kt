@@ -27,6 +27,9 @@ internal class YandexMusicAudioProvider(
     override val displayName: String = "Яндекс Музыка"
     override val priority: Int = 20
 
+    override val sourceId: com.luc4n3x.levyra.feature.source.SourceId =
+        com.luc4n3x.levyra.feature.source.SourceId.YANDEX
+
     // Per-origin dispatch: only ever handle Yandex-origin tracks.
     override fun owns(track: Track): Boolean =
         track.source == PROVIDER_ID || track.id.startsWith("yandex:")
