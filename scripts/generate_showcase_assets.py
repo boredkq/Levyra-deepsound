@@ -159,6 +159,8 @@ M3_MARKETING_COPY = {
     "Screenshot_20260927_131943_LEVYRA.jpg": "See when and how you listen.",
     "Screenshot_20261012_193022_LEVYRA.jpg": "Your most-played music, always close.",
     "Screenshot_20261020_142741_LEVYRA.jpg": "Listening insights that stay on-device.",
+    "Screenshot_20261024_210317_Levyra.jpg": "Listening insights that stay on-device.",
+    "Screenshot_20261024_210532_Levyra.jpg": "Handpicked collections and gems revolving around what you love.",
     "Screenshot_20261010_144048_LEVYRA.jpg": "Essential sets for every artist.",
     "Screenshot_20261010_140700_LEVYRA.jpg": "Design, audio, gestures, and local backups.",
     "Screenshot_20261015_205614_LEVYRA.jpg": "Theme, home, player, and audio in one place.",
@@ -280,32 +282,34 @@ def crop_to_fill(source, width, height):
     return resized.crop((left, top, left + width, top + height))
 
 def create_s26_ultra_mockup(source, size=(720, 1500)):
-    frame = 13
+    frame = 9
     outer_w, outer_h = size
     inner_w, inner_h = outer_w - frame * 2, outer_h - frame * 2
     phone = Image.new("RGBA", size, (0, 0, 0, 0))
     draw = ImageDraw.Draw(phone)
+    radius = 18
+    screen_radius = 12
     draw.rounded_rectangle(
         (0, 0, outer_w - 1, outer_h - 1),
-        radius=54,
-        fill=(28, 29, 34, 255),
-        outline=(120, 121, 128, 220),
-        width=3,
+        radius=radius,
+        fill=(25, 27, 33, 255),
+        outline=(185, 190, 202, 255),
+        width=2,
     )
     screenshot = crop_to_fill(source, inner_w, inner_h)
     mask = Image.new("L", (inner_w, inner_h), 0)
     mask_draw = ImageDraw.Draw(mask)
-    mask_draw.rounded_rectangle((0, 0, inner_w - 1, inner_h - 1), radius=42, fill=255)
+    mask_draw.rounded_rectangle((0, 0, inner_w - 1, inner_h - 1), radius=screen_radius, fill=255)
     phone.paste(screenshot, (frame, frame), mask)
     draw.rounded_rectangle(
         (frame, frame, outer_w - frame - 1, outer_h - frame - 1),
-        radius=42,
-        outline=(8, 9, 12, 245),
-        width=4,
+        radius=screen_radius,
+        outline=(10, 11, 14, 255),
+        width=2,
     )
-    camera_radius = 9
+    camera_radius = 7
     camera_x = outer_w // 2
-    camera_y = frame + 22
+    camera_y = frame + 14
     draw.ellipse(
         (
             camera_x - camera_radius,
@@ -316,16 +320,16 @@ def create_s26_ultra_mockup(source, size=(720, 1500)):
         fill=(4, 5, 8, 255),
     )
     draw.ellipse(
-        (camera_x - 4, camera_y - 4, camera_x + 3, camera_y + 3),
-        fill=(35, 58, 88, 230),
+        (camera_x - 3, camera_y - 3, camera_x + 1, camera_y + 1),
+        fill=(32, 54, 85, 220),
     )
     draw.rounded_rectangle(
-        (outer_w // 2 - 28, 3, outer_w // 2 + 28, 7),
-        radius=2,
-        fill=(54, 55, 61, 255),
+        (outer_w // 2 - 28, 2, outer_w // 2 + 28, 5),
+        radius=1,
+        fill=(65, 68, 76, 255),
     )
-    draw.line((outer_w - 2, 285, outer_w - 2, 395), fill=(75, 77, 85, 255), width=4)
-    draw.line((outer_w - 2, 435, outer_w - 2, 545), fill=(75, 77, 85, 255), width=4)
+    draw.line((outer_w - 2, 285, outer_w - 2, 395), fill=(115, 120, 130, 255), width=3)
+    draw.line((outer_w - 2, 435, outer_w - 2, 525), fill=(115, 120, 130, 255), width=3)
     return phone
 
 def paste_editorial_phone(canvas, spec, card_index, placement, gutter, pair_index):
@@ -416,7 +420,7 @@ M3_SHOWCASE_SPECS = [
      (110, 50, 185), ["10_search.webp"]),
 
     # Card 11: Collections
-    ("Screenshot_20261010_132136_LEVYRA.jpg", "CURATED PLAYLISTS", "Curated for you.",
+    ("Screenshot_20261024_210532_Levyra.jpg", "CURATED PLAYLISTS", "Curated for you.",
      "Handpicked collections and gems\nrevolving around what you love.",
      (145, 45, 160), ["11_collections.webp"]),
 
@@ -431,7 +435,7 @@ M3_SHOWCASE_SPECS = [
      (105, 45, 195), ["13_your_orbit.webp"]),
 
     # Card 14: Private Listening Stats
-    ("Screenshot_20261020_142741_LEVYRA.jpg", "ON-DEVICE STATS", "Keep it personal.",
+    ("Screenshot_20261024_210317_Levyra.jpg", "ON-DEVICE STATS", "Keep it personal.",
      "Private listening stats and charts,\ncomputed strictly on your device.",
      (110, 55, 180), ["14_listening_pulse.webp"]),
 
@@ -583,51 +587,51 @@ README_CARD_SPECS = [
         "03_daylight_expressive",
         "Daylight Expressive",
         "Every curve and color tuned for bright daylight clarity",
-        "Screenshot_20261017_133945_LEVYRA.jpg",
+        "Screenshot_20261024_204745_Levyra.jpg",
         (255, 251, 235),
         (254, 240, 138),
         (234, 179, 8),
         (253, 224, 71),
-        (69, 26, 3),
+        (66, 32, 6),
         (161, 98, 7),
     ),
     (
         "04_midnight_obsidian",
         "Midnight Obsidian",
-        "Deep contrast and true black for late-night sessions",
-        "Screenshot_20261017_134057_LEVYRA.jpg",
+        "Deep obsidian surfaces with vibrant high-contrast accents",
+        "Screenshot_20261024_205815_Levyra.jpg",
         (241, 245, 249),
-        (226, 232, 240),
-        (100, 116, 139),
         (203, 213, 225),
+        (56, 128, 158),
+        (186, 230, 253),
         (15, 23, 42),
-        (71, 85, 105),
+        (12, 74, 96),
     ),
 
-    # Row 2: Exploration & Audio Precision
+    # Row 2: Discovery & Exploration
     (
         "05_fresh_currents",
-        "Fresh Currents",
-        "Explore global new releases without the scroll fatigue",
-        "Screenshot_20261010_132210_LEVYRA.jpg",
-        (240, 249, 255),
-        (224, 242, 254),
-        (14, 165, 233),
-        (186, 230, 253),
-        (12, 74, 110),
-        (2, 132, 199),
+        "Instant Search",
+        "Find any track, album or artist in real time",
+        "Screenshot_20261024_144737_Levyra.jpg",
+        (240, 244, 255),
+        (224, 231, 255),
+        (59, 130, 246),
+        (191, 219, 254),
+        (30, 58, 138),
+        (37, 99, 235),
     ),
     (
         "06_built_for_your_taste",
-        "Built for Your Taste",
-        "A dynamic mix shaped around your listening moments",
-        "Screenshot_20261015_144159_LEVYRA.jpg",
-        (253, 242, 248),
-        (252, 231, 243),
-        (217, 70, 239),
-        (245, 208, 254),
-        (74, 4, 78),
-        (162, 28, 175),
+        "Player Styles",
+        "Choose from multiple player layouts, controls and stream modes",
+        "Screenshot_20261024_203401_Levyra.jpg",
+        (254, 250, 242),
+        (250, 240, 222),
+        (217, 119, 6),
+        (245, 222, 179),
+        (69, 45, 12),
+        (180, 83, 9),
     ),
     (
         "07_every_genre",
@@ -644,14 +648,14 @@ README_CARD_SPECS = [
     (
         "08_acoustic_precision",
         "Acoustic Precision",
-        "10-band equalizer and AutoEQ headphone profiles",
-        "Screenshot_20261010_190726_LEVYRA.jpg",
-        (245, 243, 255),
-        (237, 233, 254),
-        (139, 92, 246),
-        (221, 214, 254),
-        (46, 16, 101),
-        (109, 40, 217),
+        "High-fidelity 320 kbps streaming with lossless output",
+        "Screenshot_20261024_150113_Levyra.jpg",
+        (239, 246, 255),
+        (219, 234, 254),
+        (59, 130, 246),
+        (147, 197, 253),
+        (30, 58, 138),
+        (37, 99, 235),
     ),
 
     # Row 3: Library & Insights
@@ -669,9 +673,9 @@ README_CARD_SPECS = [
     ),
     (
         "10_curated_for_you",
-        "Curated Collections",
-        "Instant shortcuts, custom playlists and quick picks",
-        "Screenshot_20261017_143917_LEVYRA.jpg",
+        "Curated Search",
+        "Artist shortcuts, instant play, and category filters",
+        "Screenshot_20261024_193919_Levyra.jpg",
         (255, 247, 237),
         (254, 237, 213),
         (249, 115, 22),
@@ -682,96 +686,70 @@ README_CARD_SPECS = [
     (
         "11_your_rhythm",
         "Listening Insights",
-        "See the patterns and artists behind your plays",
-        "Screenshot_20260927_131943_LEVYRA.jpg",
-        (245, 243, 255),
-        (238, 242, 255),
-        (124, 58, 237),
-        (216, 180, 254),
-        (59, 7, 100),
-        (126, 34, 206),
+        "Personal stats, listening habits and receipt computed on device",
+        "Screenshot_20261024_210317_Levyra.jpg",
+        (240, 249, 255),
+        (224, 242, 254),
+        (14, 165, 233),
+        (186, 230, 253),
+        (12, 74, 96),
+        (2, 132, 199),
     ),
     (
         "12_in_your_orbit",
-        "In Your Orbit",
-        "Keep your top artists, albums and tracks close at hand",
-        "Screenshot_20261010_132103_LEVYRA.jpg",
-        (240, 253, 244),
-        (220, 252, 231),
-        (34, 197, 94),
-        (187, 247, 208),
-        (20, 83, 45),
-        (21, 128, 61),
+        "Levyra Collections",
+        "Handpicked playlists and gems revolving around what you love",
+        "Screenshot_20261024_210532_Levyra.jpg",
+        (245, 243, 255),
+        (237, 233, 254),
+        (139, 92, 246),
+        (221, 214, 254),
+        (46, 16, 101),
+        (109, 40, 217),
     ),
 
-    # Row 4: Personalization & Jam
+    # Row 4: Personalization & Artists
     (
         "13_tailor_every_detail",
-        "Make Levyra Yours",
-        "Theme, navigation, player and audio—fully customizable",
-        "Screenshot_20261015_205614_LEVYRA.jpg",
-        (250, 245, 255),
-        (243, 232, 255),
-        (168, 85, 247),
-        (233, 213, 255),
-        (59, 7, 100),
-        (126, 34, 206),
+        "Skin Studio",
+        "Seven complete looks. Switch layout in one tap",
+        "Screenshot_20261023_212906_LEVYRA.jpg",
+        (245, 243, 255),
+        (237, 233, 254),
+        (139, 92, 246),
+        (221, 214, 254),
+        (46, 16, 101),
+        (109, 40, 217),
     ),
     (
         "14_fresh_off_the_stage",
-        "Fresh Releases",
-        "The latest drops from your favorite artists, uncluttered",
-        "Screenshot_20261010_144144_LEVYRA.jpg",
-        (238, 242, 255),
-        (224, 231, 255),
-        (79, 70, 229),
-        (199, 210, 254),
-        (30, 27, 75),
-        (67, 56, 202),
+        "Live Radio",
+        "Thousands of live stations from around the globe",
+        "Screenshot_20261024_145819_Levyra.jpg",
+        (254, 242, 242),
+        (254, 226, 226),
+        (239, 68, 68),
+        (254, 202, 202),
+        (69, 10, 10),
+        (185, 28, 28),
     ),
     (
         "15_meet_the_artist",
         "Meet the Artist",
-        "Deep-dive into discographies, top tracks and singles",
-        "Screenshot_20261010_143646_LEVYRA.jpg",
-        (255, 241, 242),
-        (255, 228, 230),
-        (244, 63, 94),
-        (254, 205, 211),
-        (76, 5, 25),
-        (190, 18, 60),
+        "Artist biographies, monthly audience, and complete discography",
+        "Screenshot_20261024_145036_Levyra.jpg",
+        (245, 243, 255),
+        (237, 233, 254),
+        (139, 92, 246),
+        (221, 214, 254),
+        (46, 16, 101),
+        (109, 40, 217),
     ),
     (
         "16_listen_together",
         "Levyra Jam",
-        "One shared room, one unified queue, everyone connected",
+        "Real-time collaborative listening queue with friends",
         "Screenshot_20261011_133434_LEVYRA.jpg",
-        (236, 254, 255),
-        (207, 250, 254),
-        (6, 182, 212),
-        (165, 243, 252),
-        (22, 78, 99),
-        (14, 116, 144),
-    ),
-
-    # Row 5: Lyrics, Offline, Discovery & Year in Music
-    (
-        "17_sing_along",
-        "Synced Lyrics",
-        "Word-by-word timing, romanization and live translation",
-        "screen-lyrics.jpg",
-        (255, 251, 235),
-        (254, 243, 199),
-        (245, 158, 11),
-        (253, 230, 138),
-        (69, 26, 3),
-        (180, 83, 9),
-    ),
-    (
-        "18_open_the_album",
-        "Offline Music",
-        "Keep your favorite albums saved directly on your device",
-        "Screenshot_20260926_194706_LEVYRA.jpg",
         (236, 253, 245),
         (209, 250, 229),
         (16, 185, 129),
@@ -779,17 +757,43 @@ README_CARD_SPECS = [
         (6, 78, 59),
         (5, 150, 105),
     ),
+
+    # Row 5: Interactive Discovery & Personal Highlights
+    (
+        "17_sing_along",
+        "Synced Lyrics",
+        "Real-time lyrics with tap-to-seek and translation",
+        "screen-lyrics.jpg",
+        (255, 251, 235),
+        (254, 240, 138),
+        (245, 158, 11),
+        (253, 224, 71),
+        (69, 26, 3),
+        (180, 83, 9),
+    ),
+    (
+        "18_open_the_album",
+        "Offline Music",
+        "Download full albums and singles directly to device storage",
+        "Screenshot_20261024_193647_Levyra.jpg",
+        (248, 250, 252),
+        (226, 232, 240),
+        (100, 116, 139),
+        (203, 213, 225),
+        (15, 23, 42),
+        (71, 85, 105),
+    ),
     (
         "19_discover_for_you",
         "Discover for You",
         "Swipe right to save, swipe left to discover next",
-        "Screenshot_20261024_130435_Levyra.jpg",
-        (254, 242, 242),
-        (254, 226, 226),
-        (239, 68, 68),
-        (254, 202, 202),
-        (69, 10, 10),
-        (185, 28, 28),
+        "Screenshot_20261024_195654_Levyra.jpg",
+        (254, 250, 242),
+        (250, 240, 222),
+        (180, 130, 45),
+        (245, 222, 179),
+        (69, 45, 12),
+        (150, 95, 20),
     ),
     (
         "20_your_year_in_music",
@@ -804,12 +808,12 @@ README_CARD_SPECS = [
         (162, 28, 175),
     ),
 
-    # Row 6: Global Skins (3 Iconic Streaming Themes)
+    # Row 6: Global Streaming Skins (Dual Dynamic Diptych Cuts)
     (
         "21_spotify_style",
         "Spotify Style",
-        "Familiar green accents, shortcuts and artist glow",
-        "Screenshot_20261023_212929_LEVYRA.jpg",
+        "Familiar dark surfaces, green accents and artist glow",
+        "Screenshot_20261024_213852_Levyra.jpg",
         (236, 253, 245),
         (209, 250, 229),
         (30, 215, 96),
@@ -821,19 +825,19 @@ README_CARD_SPECS = [
         "22_apple_music_style",
         "Apple Music Style",
         "Editorial white surfaces, album shelves and bold type",
-        "Screenshot_20261023_212956_LEVYRA.jpg",
-        (255, 241, 242),
-        (255, 228, 230),
-        (250, 45, 72),
-        (254, 205, 211),
-        (76, 5, 25),
-        (190, 18, 60),
+        "Screenshot_20261024_201549_Levyra.jpg",
+        (255, 255, 255),
+        (241, 245, 249),
+        (251, 113, 133),
+        (226, 232, 240),
+        (15, 23, 42),
+        (71, 85, 105),
     ),
     (
         "23_youtube_music_style",
         "YouTube Music Style",
-        "Familiar mood chips, clean cards and daily charts",
-        "Screenshot_20261023_213023_LEVYRA.jpg",
+        "Dynamic chip filters, charts and pure black backdrop",
+        "Screenshot_20261024_201709_Levyra.jpg",
         (254, 242, 242),
         (254, 226, 226),
         (255, 0, 0),
@@ -841,7 +845,18 @@ README_CARD_SPECS = [
         (69, 10, 10),
         (185, 28, 28),
     ),
-]
+    (
+        "24_signature_looks",
+        "Signature Looks",
+        "From retro hi-fi warmth to modern tactile glass",
+        "Screenshot_20261024_201753_Levyra.jpg",
+        (250, 245, 255),
+        (243, 232, 255),
+        (168, 85, 247),
+        (233, 213, 255),
+        (59, 7, 100),
+        (126, 34, 206),
+    ),]
 
 def make_campaign_device(filename, width):
     screenshot_path = resolve_screenshot_path(filename)
@@ -851,10 +866,13 @@ def make_campaign_device(filename, width):
         screenshot = enhance_screenshot(screenshot_source).convert("RGBA")
 
     outer_width = width
-    outer_height = round(width * 2.13)
-    padding = max(18, round(width * 0.03))
-    frame = max(11, round(width * 0.02))
-    radius = max(26, round(width * 0.042))
+    outer_height = round(width * 2.10)
+    padding = max(16, round(width * 0.025))
+    frame = max(8, round(width * 0.013))
+    # S25 Ultra signature softened ergonomic corners
+    radius = max(17, round(width * 0.027))
+    screen_radius = max(11, round(width * 0.018))
+
     device = Image.new(
         "RGBA",
         (outer_width + padding * 2, outer_height + padding * 2),
@@ -862,30 +880,41 @@ def make_campaign_device(filename, width):
     )
     draw = ImageDraw.Draw(device)
     body = (padding, padding, padding + outer_width - 1, padding + outer_height - 1)
+
+    # 1. Titanium Frame Base (Sleek dark titanium)
     draw.rounded_rectangle(
         body,
         radius=radius,
-        fill=(18, 19, 23, 255),
-        outline=(164, 165, 171, 255),
-        width=max(4, round(width * 0.007)),
-    )
-    inner_edge = max(4, round(width * 0.007))
-    draw.rounded_rectangle(
-        (
-            body[0] + inner_edge,
-            body[1] + inner_edge,
-            body[2] - inner_edge,
-            body[3] - inner_edge,
-        ),
-        radius=radius - inner_edge,
-        outline=(54, 56, 63, 255),
-        width=max(2, round(width * 0.004)),
+        fill=(25, 27, 33, 255),
     )
 
+    # 2. Outer Chamfer / Metallic Titanium Rim
+    draw.rounded_rectangle(
+        body,
+        radius=radius,
+        outline=(185, 190, 202, 255),
+        width=max(2, round(width * 0.0035)),
+    )
+
+    # 3. Inner frame depth
+    inner_edge = max(2, round(width * 0.003))
+    inner_body = (
+        body[0] + inner_edge,
+        body[1] + inner_edge,
+        body[2] - inner_edge,
+        body[3] - inner_edge,
+    )
+    draw.rounded_rectangle(
+        inner_body,
+        radius=radius - inner_edge,
+        outline=(48, 51, 60, 255),
+        width=1,
+    )
+
+    # 4. Screen
     screen_width = outer_width - frame * 2
     screen_height = outer_height - frame * 2
     screen = crop_to_fill(screenshot, screen_width, screen_height)
-    screen_radius = max(38, radius - frame)
     screen_mask = Image.new("L", (screen_width, screen_height), 0)
     ImageDraw.Draw(screen_mask).rounded_rectangle(
         (0, 0, screen_width - 1, screen_height - 1),
@@ -895,16 +924,19 @@ def make_campaign_device(filename, width):
     screen_x = padding + frame
     screen_y = padding + frame
     device.paste(screen, (screen_x, screen_y), screen_mask)
+
+    # 5. Screen inner hairline border
     draw.rounded_rectangle(
         (screen_x, screen_y, screen_x + screen_width - 1, screen_y + screen_height - 1),
         radius=screen_radius,
-        outline=(5, 6, 9, 255),
-        width=max(3, round(width * 0.006)),
+        outline=(10, 11, 14, 255),
+        width=max(2, round(width * 0.003)),
     )
 
+    # 6. S25 Ultra Infinity-O punch-hole selfie camera
     camera_x = padding + outer_width // 2
-    camera_y = screen_y + max(17, round(width * 0.033))
-    camera_radius = max(8, round(width * 0.014))
+    camera_y = screen_y + max(13, round(width * 0.022))
+    camera_radius = max(6, round(width * 0.010))
     draw.ellipse(
         (
             camera_x - camera_radius,
@@ -912,32 +944,39 @@ def make_campaign_device(filename, width):
             camera_x + camera_radius,
             camera_y + camera_radius,
         ),
-        fill=(3, 4, 7, 255),
+        fill=(4, 5, 8, 255),
     )
+    glint = max(2, round(camera_radius * 0.38))
     draw.ellipse(
-        (camera_x - 4, camera_y - 4, camera_x + 4, camera_y + 4),
-        fill=(27, 49, 77, 240),
-    )
-    speaker_half = max(22, round(width * 0.045))
-    draw.rounded_rectangle(
-        (camera_x - speaker_half, padding + 4, camera_x + speaker_half, padding + 8),
-        radius=2,
-        fill=(70, 71, 77, 255),
+        (camera_x - glint, camera_y - glint, camera_x + 1, camera_y + 1),
+        fill=(32, 54, 85, 220),
     )
 
-    button_width = max(4, round(width * 0.008))
+    # 7. Micro-slit earpiece speaker at top rim
+    speaker_half = max(26, round(width * 0.055))
+    draw.rounded_rectangle(
+        (camera_x - speaker_half, padding + 2, camera_x + speaker_half, padding + 5),
+        radius=1,
+        fill=(65, 68, 76, 255),
+    )
+
+    # 8. Titanium buttons (Right side: Volume rocker and Power key)
+    button_width = max(3, round(width * 0.006))
     button_x = padding + outer_width - 1
-    for top_ratio, bottom_ratio in ((0.20, 0.31), (0.35, 0.44)):
-        draw.rounded_rectangle(
-            (
-                button_x,
-                padding + round(outer_height * top_ratio),
-                button_x + button_width,
-                padding + round(outer_height * bottom_ratio),
-            ),
-            radius=button_width // 2,
-            fill=(91, 93, 101, 255),
-        )
+    v_top = padding + round(outer_height * 0.22)
+    v_bot = padding + round(outer_height * 0.33)
+    draw.rounded_rectangle(
+        (button_x, v_top, button_x + button_width, v_bot),
+        radius=button_width // 2,
+        fill=(115, 120, 130, 255),
+    )
+    p_top = padding + round(outer_height * 0.38)
+    p_bot = padding + round(outer_height * 0.45)
+    draw.rounded_rectangle(
+        (button_x, p_top, button_x + button_width, p_bot),
+        radius=button_width // 2,
+        fill=(115, 120, 130, 255),
+    )
     return device
 
 def create_readme_card_background(w, h, top_rgb, bot_rgb, bloom_rgb, bloom_opacity=110):
@@ -1118,7 +1157,7 @@ def render_readme_centered_card(spec):
     sub_y = title_y + (title_bbox[3] - title_bbox[0]) + 18
     draw.text((sub_x, sub_y), subtitle, font=sub_font, fill=sub_rgb + (255,))
 
-    dev_w = 640
+    dev_w = 705
     device = make_campaign_device(screenshot_name, dev_w)
 
     shadow = Image.new("RGBA", device.size, (15, 23, 42, 0))
@@ -1127,10 +1166,53 @@ def render_readme_centered_card(spec):
     shadow.putalpha(shadow_alpha)
 
     dev_x = (CARD_W - device.width) // 2
-    dev_y = 390
+    dev_y = 350
 
     canvas.alpha_composite(shadow, (dev_x, dev_y + 36))
     canvas.alpha_composite(device, (dev_x, dev_y))
+
+    mask = Image.new("L", (CARD_W, CARD_H), 0)
+    ImageDraw.Draw(mask).rounded_rectangle((0, 0, CARD_W - 1, CARD_H - 1), radius=44, fill=255)
+
+    draw_readme_card_frame(canvas, border_rgb, radius=44)
+    canvas.putalpha(mask)
+    return canvas
+
+def render_readme_floating_card(spec, angle=0.0):
+    card_id, title, subtitle, screenshot_name, top_rgb, bot_rgb, bloom_rgb, border_rgb, ink_rgb, sub_rgb = spec
+    canvas = create_readme_card_background(CARD_W, CARD_H, top_rgb, bot_rgb, bloom_rgb, bloom_opacity=130)
+    draw = ImageDraw.Draw(canvas)
+
+    title_font = get_font(56, bold=True)
+    sub_font = get_font(28, bold=False)
+
+    title_bbox = draw.textbbox((0, 0), title, font=title_font)
+    title_w = title_bbox[2] - title_bbox[0]
+    title_x = (CARD_W - title_w) // 2
+    title_y = 110
+    draw.text((title_x, title_y), title, font=title_font, fill=ink_rgb + (255,))
+
+    sub_bbox = draw.textbbox((0, 0), subtitle, font=sub_font)
+    sub_w = sub_bbox[2] - sub_bbox[0]
+    sub_x = (CARD_W - sub_w) // 2
+    sub_y = title_y + (title_bbox[3] - title_bbox[0]) + 18
+    draw.text((sub_x, sub_y), subtitle, font=sub_font, fill=sub_rgb + (255,))
+
+    dev_w = 660
+    device = make_campaign_device(screenshot_name, dev_w)
+
+    rot_dev = device.rotate(angle, resample=Image.Resampling.BICUBIC, expand=True)
+
+    shadow = Image.new("RGBA", rot_dev.size, (15, 23, 42, 0))
+    shadow_alpha = rot_dev.getchannel("A").filter(ImageFilter.GaussianBlur(40))
+    shadow_alpha = ImageEnhance.Brightness(shadow_alpha).enhance(0.35)
+    shadow.putalpha(shadow_alpha)
+
+    dev_x = (CARD_W - rot_dev.width) // 2
+    dev_y = 360
+
+    canvas.alpha_composite(shadow, (dev_x, dev_y + 32))
+    canvas.alpha_composite(rot_dev, (dev_x, dev_y))
 
     mask = Image.new("L", (CARD_W, CARD_H), 0)
     ImageDraw.Draw(mask).rounded_rectangle((0, 0, CARD_W - 1, CARD_H - 1), radius=44, fill=255)
@@ -1253,8 +1335,8 @@ def generate_readme_cards():
         artwork.save(out_path, "WEBP", quality=95, method=6)
         print(f"Saved README editorial card at {artwork.size}: {out_path}")
 
-    # 3. Render Cards 05 through 20 (Rows 2, 3, 4, 5)
-    for index in range(4, 20):
+    # 3. Render Cards 05 through 24 (Rows 2, 3, 4, 5, and 6 as cohesive centered cards)
+    for index in range(4, len(README_CARD_SPECS)):
         spec = README_CARD_SPECS[index]
         artwork = render_readme_centered_card(spec)
         cards.append(artwork)
@@ -1262,16 +1344,9 @@ def generate_readme_cards():
         artwork.save(out_path, "WEBP", quality=95, method=6)
         print(f"Saved README editorial card at {artwork.size}: {out_path}")
 
-    # 4. Render Row 6 Individual Skin Cards (Cards 21, 22, 23)
-    for index in range(20, len(README_CARD_SPECS)):
-        spec = README_CARD_SPECS[index]
-        artwork = render_readme_centered_card(spec)
-        out_path = os.path.join(README_CARD_DIR, spec[0] + ".webp")
-        artwork.save(out_path, "WEBP", quality=95, method=6)
-        print(f"Saved README editorial card at {artwork.size}: {out_path}")
-
-    # 5. Assemble Rows 01 to 05
-    for row_index in range(5):
+    # 4. Assemble Rows (01 to 06)
+    row_count = len(README_CARD_SPECS) // 4
+    for row_index in range(row_count):
         row = Image.new("RGB", (3600, 1800))
         spaced_row = Image.new("RGBA", (3696, 1800), (0, 0, 0, 0))
         for col in range(4):
@@ -1279,30 +1354,25 @@ def generate_readme_cards():
             row.paste(card.convert("RGB"), (col * 900, 0))
             spaced_row.paste(card, (col * (900 + 32), 0), card)
 
-        idx_str = f"{row_index + 1:02d}"
-        spaced_path = os.path.join(README_CARD_DIR, f"editorial-grid-row-{idx_str}-spaced.webp")
-        row_path = os.path.join(README_CARD_DIR, f"editorial-grid-row-{idx_str}.webp")
-        uniform_name = (
-            "editorial-grid-row-01-orbit-reference.webp"
-            if row_index == 0
-            else f"editorial-grid-row-{idx_str}-uniform-centered.webp"
-        )
-        uniform_path = os.path.join(README_CARD_DIR, uniform_name)
+        if row_index == 5:
+            spaced_path = os.path.join(README_CARD_DIR, "editorial-grid-row-06-skins-spaced.webp")
+            row_path = os.path.join(README_CARD_DIR, "editorial-grid-row-06-skins.webp")
+            uniform_path = os.path.join(README_CARD_DIR, "editorial-grid-row-06-skins-uniform-centered.webp")
+        else:
+            idx_str = f"{row_index + 1:02d}"
+            spaced_path = os.path.join(README_CARD_DIR, f"editorial-grid-row-{idx_str}-spaced.webp")
+            row_path = os.path.join(README_CARD_DIR, f"editorial-grid-row-{idx_str}.webp")
+            uniform_name = (
+                "editorial-grid-row-01-orbit-reference.webp"
+                if row_index == 0
+                else f"editorial-grid-row-{idx_str}-uniform-centered.webp"
+            )
+            uniform_path = os.path.join(README_CARD_DIR, uniform_name)
 
         spaced_row.save(spaced_path, "WEBP", quality=95, method=6)
         row.save(row_path, "WEBP", quality=95, method=6)
         row.save(uniform_path, "WEBP", quality=95, method=6)
         print(f"Saved row {row_index + 1}: {spaced_path}")
-
-    # 6. Render Row 6: Global Skins 3-Phone Fan-Out Stage
-    skins_stage = render_readme_skins_fanout_stage()
-    spaced_path = os.path.join(README_CARD_DIR, "editorial-grid-row-06-skins-spaced.webp")
-    row_path = os.path.join(README_CARD_DIR, "editorial-grid-row-06-skins.webp")
-    uniform_path = os.path.join(README_CARD_DIR, "editorial-grid-row-06-skins-uniform-centered.webp")
-    skins_stage.save(spaced_path, "WEBP", quality=95, method=6)
-    skins_stage.save(row_path, "WEBP", quality=95, method=6)
-    skins_stage.save(uniform_path, "WEBP", quality=95, method=6)
-    print(f"Saved row 6 skins fan-out stage at {skins_stage.size}: {spaced_path}")
 
 if __name__ == "__main__":
     generate_hero_panoramic_showcase()

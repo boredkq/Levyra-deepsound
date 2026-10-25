@@ -117,17 +117,15 @@ Enhanced Audio is on by default and can be turned off in Audio Settings. Technic
 <div align="center">
 <div><img src="docs/assets/showcase/editorial-cards/editorial-grid-row-01-spaced.webp?v=4" width="900" align="top" alt="Levyra showcase: radio, now playing, light theme, and dark theme" /></div>
 <br />
-<div><img src="docs/assets/showcase/editorial-cards/editorial-grid-row-02-spaced.webp?v=4" width="900" align="top" alt="Levyra showcase: discovery, mixes, moods, and audio controls" /></div>
+<div><img src="docs/assets/showcase/editorial-cards/editorial-grid-row-02-spaced.webp?v=4" width="900" align="top" alt="Levyra showcase: discovery, player styles, moods, and audio controls" /></div>
 <br />
-<div><img src="docs/assets/showcase/editorial-cards/editorial-grid-row-03-spaced.webp?v=4" width="900" align="top" alt="Levyra showcase: library, collections, insights, and home" /></div>
+<div><img src="docs/assets/showcase/editorial-cards/editorial-grid-row-03-spaced.webp?v=4" width="900" align="top" alt="Levyra showcase: library, curated search, listening insights, and collections" /></div>
 <br />
 <div><img src="docs/assets/showcase/editorial-cards/editorial-grid-row-04-spaced.webp?v=4" width="900" align="top" alt="Levyra showcase: settings, new releases, artists, and Jam" /></div>
 <br />
 <div><img src="docs/assets/showcase/editorial-cards/editorial-grid-row-05-spaced.webp?v=4" width="900" align="top" alt="Levyra showcase: synced lyrics, offline albums, discovery, and Year in Music" /></div>
 <br />
-<p align="center"><b>Global skins · Choose your streaming layout</b><br>
-<sub>Want Spotify? Here's Spotify. &nbsp;·&nbsp; Want Apple Music? Here's Apple. &nbsp;·&nbsp; Want YouTube Music? Here it is.</sub></p>
-<div><img src="docs/assets/showcase/editorial-cards/editorial-grid-row-06-skins-spaced.webp?v=4" width="900" align="top" alt="Levyra showcase: Spotify Style, Apple Music Style, and YouTube Music Style" /></div>
+<div><img src="docs/assets/showcase/editorial-cards/editorial-grid-row-06-skins-spaced.webp?v=4" width="900" align="top" alt="Levyra showcase: Spotify Style, Apple Music Style, YouTube Music Style, and Signature Looks" /></div>
 </div>
 
 </div>

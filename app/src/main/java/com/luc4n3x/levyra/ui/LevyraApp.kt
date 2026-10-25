@@ -144,7 +144,8 @@ import com.luc4n3x.levyra.ui.lyrics.lyricsOffsetPosition
 import com.luc4n3x.levyra.ui.lyrics.lyricsInstrumentalDotIntensity
 import com.luc4n3x.levyra.ui.lyrics.lyricsInstrumentalGaps
 import com.luc4n3x.levyra.ui.lyrics.lyricsInstrumentalProgress
-import com.luc4n3x.levyra.ui.lyrics.lyricsLineFocusPositionMs
+import com.luc4n3x.levyra.ui.lyrics.LocalLivePlaybackPosition
+import com.luc4n3x.levyra.ui.lyrics.LyricsAmbientBackdrop
 import com.luc4n3x.levyra.ui.lyrics.rememberLyricsPlaybackClock
 import com.luc4n3x.levyra.ui.lyrics.LYRICS_LANDSCAPE_CHROME_HEIGHT_DP
 import com.luc4n3x.levyra.ui.lyrics.LYRICS_LANDSCAPE_PANE_GAP_DP
@@ -410,6 +411,11 @@ import androidx.compose.material.icons.rounded.OfflinePin
 import androidx.compose.material.icons.rounded.SkipNext
 import androidx.compose.material.icons.automirrored.rounded.VolumeOff
 import androidx.compose.material.icons.rounded.HighQuality
+import androidx.compose.material.icons.rounded.MusicVideo
+import androidx.compose.material.icons.rounded.Fullscreen
+import androidx.compose.material.icons.rounded.VerticalAlignTop
+import androidx.compose.material.icons.rounded.VerticalAlignBottom
+import androidx.compose.material.icons.rounded.Apps
 import androidx.compose.material.icons.rounded.LibraryAdd
 import androidx.compose.material.icons.rounded.Source
 import androidx.compose.material.icons.rounded.Wifi
@@ -536,6 +542,7 @@ import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Path
@@ -671,6 +678,12 @@ import com.luc4n3x.levyra.domain.ListeningPulse
 import com.luc4n3x.levyra.ui.pulse.ListeningPulseProCard
 import com.luc4n3x.levyra.ui.recap.LevyraListeningRecapOverlay
 import com.luc4n3x.levyra.ui.insights.ListeningInsightsScreen
+import com.luc4n3x.levyra.ui.rewind.RewindScreen
+import com.luc4n3x.levyra.ui.rewind.RewindEntry
+import com.luc4n3x.levyra.ui.downloadhealth.DownloadHealthScreen
+import com.luc4n3x.levyra.ui.downloadhealth.DownloadHealthEntry
+import com.luc4n3x.levyra.ui.experiences.LocalMusicExperiences
+import com.luc4n3x.levyra.ui.experiences.MusicExperienceNavigation
 import com.luc4n3x.levyra.domain.LyricLine
 import com.luc4n3x.levyra.domain.LyricSection
 import com.luc4n3x.levyra.domain.LyricSectionType
@@ -827,6 +840,8 @@ import com.luc4n3x.levyra.domain.LevyraAmbientMode
 import com.luc4n3x.levyra.domain.LevyraAmbientSettings
 import com.luc4n3x.levyra.domain.LevyraAutomationSettings
 import com.luc4n3x.levyra.domain.LevyraInterfaceSettings
+import com.luc4n3x.levyra.domain.LevyraImmersiveSettings
+import com.luc4n3x.levyra.domain.MusicVideoPlaybackPreference
 import com.luc4n3x.levyra.ui.player.PlayerDragEvent
 import com.luc4n3x.levyra.ui.player.PlayerGestureZone
 import com.luc4n3x.levyra.ui.player.PlayerMorphAnchors
@@ -875,7 +890,6 @@ private val CompactNumberTrailingZeroPattern = Regex("[,.]0$")
 private val CommentCountBadgePattern = Regex("""\d[\d\s.,]*(?:[KMBkmb])?""")
 private val TrackRowShape = RoundedCornerShape(18.dp)
 private val TrackRowArtworkShape = RoundedCornerShape(12.dp)
-private val DownloadRowArtworkShape = RoundedCornerShape(8.dp)
 private val TrackRowTransparentBrush: Brush = SolidColor(Color.Transparent)
 private val CinematicPlum = Color(0xFF2A1738)
 private val CinematicGold = Color(0xFFFFC46B)
@@ -1854,7 +1868,7 @@ private fun HomeTrackColumnsShelf(
 }
 
 @Composable
-private fun EmptyState(text: String) {
+internal fun EmptyState(text: String) {
     Surface(
         color = CinematicGlass.copy(alpha = 0.66f),
         border = BorderStroke(1.dp, Color.White.copy(alpha = 0.10f)),
@@ -1959,6 +1973,7 @@ fun LevyraApp(
     var showLanguageRestartDialog by remember { mutableStateOf(false) }
     var showPlaybackDiagnostics by remember { mutableStateOf(false) }
     var showDownloadsFolder by remember { mutableStateOf(false) }
+    var musicExperience by rememberSaveable { mutableStateOf<String?>(null) }
     var liveRadioOpen by rememberSaveable { mutableStateOf(false) }
     var discoveryOpen by rememberSaveable { mutableStateOf(false) }
     var trackActionTarget by remember { mutableStateOf<Track?>(null) }
@@ -2174,10 +2189,12 @@ fun LevyraApp(
         }
     }
     val otherRootOverlayOpen = showYoutubeMusic || showYandexMusic || showSoundCloud || showLanguageRestartDialog || state.youtubeEngagement.comments.visible || state.showRecognition || state.showJam || state.showThemeStudio || state.showLyricsStudio || state.showHomeStudio || miniPlayerStudio.visible || navigationStudio.visible || state.showYourSound || state.showListeningInsights || state.showListeningRecap || state.sharedMediaPreview != null || showDownloadsFolder || state.playlistHitPreview != null || state.openPlaylist != null || state.showAlbum || state.showArtist || state.showQueue || state.showLyrics || state.showAudioQualityPanel
-    val rootOverlayOpen = otherRootOverlayOpen || state.showSettings
+    val rootOverlayOpen = otherRootOverlayOpen || state.showSettings || musicExperience != null
     val settingsDockVisible = state.showSettings && !otherRootOverlayOpen
     BackHandler(enabled = rootOverlayOpen || state.selectedTab != LevyraTab.Home) {
-        if (showYoutubeMusic) {
+        if (musicExperience != null) {
+            musicExperience = null
+        } else if (showYoutubeMusic) {
             if (youtubeMusicState.showLogin) youtubeMusicViewModel.cancelLogin()
             else if (youtubeMusicState.detail != null) youtubeMusicViewModel.closeDetail()
             else showYoutubeMusic = false
@@ -2226,8 +2243,13 @@ fun LevyraApp(
         enabled = navigationStudio.visible ||
             navigationStudio.settings.activeTuning().colorSource == NavColorSource.Artwork
     )
+    val livePlaybackPosition = remember(viewModel) { viewModel::livePlaybackPositionMs }
     CompositionLocalProvider(
+        LocalMusicExperiences provides MusicExperienceNavigation(
+            rewind = { musicExperience = "rewind" }, health = { musicExperience = "health" }
+        ),
         LocalAnimationsEnabled provides state.animationsEnabled,
+        LocalLivePlaybackPosition provides livePlaybackPosition,
         LocalLevyraVisualCapabilities provides visualCapabilities,
         LocalLevyraStrings provides currentStrings,
         LocalLevyraHaptics provides rememberLevyraHaptics(state.interfaceSettings.hapticFeedback),
@@ -2298,6 +2320,7 @@ fun LevyraApp(
             val expansionProvider: () -> Float = { playerExpansion.value }
             val chromeVisible by remember { derivedStateOf { playerExpansion.value < 1f } }
             val playerVisible by remember { derivedStateOf { playerExpansion.value > 0f } }
+            HideSystemBars(state.interfaceSettings.immersive.hiddenBars(fullPlayerVisible = !chromeVisible && !rootOverlayOpen))
             val morphAllowed = state.animationsEnabled && !state.isVideoMode
             val artworkMorphActive by remember(morphAllowed) {
                 derivedStateOf {
@@ -2366,7 +2389,7 @@ fun LevyraApp(
                 !state.showAudioQualityPanel &&
                 !state.youtubeEngagement.comments.visible &&
                 !state.showYourSound &&
-                !state.showListeningInsights &&
+                !state.showListeningInsights && musicExperience == null &&
                 !state.showListeningRecap &&
                 !state.showJam &&
                 !state.showRecognition &&
@@ -3106,6 +3129,8 @@ fun LevyraApp(
                     onTogglePlay = viewModel::togglePlay,
                     onNext = viewModel::next,
                     onOpenLyricsStudio = viewModel::openLyricsStudio,
+                    onUpdateLyricsStudio = viewModel::setLyricsStudioSettings,
+                    onSeekFraction = { fraction -> viewModel.seekTo(fraction) },
                     onClose = viewModel::closeLyrics
                 )
             }
@@ -3543,6 +3568,16 @@ fun LevyraApp(
                 )
             }
 
+            if (musicExperience == "rewind") {
+                RewindScreen(onClose = { musicExperience = null })
+            } else if (musicExperience == "health") {
+                DownloadHealthScreen(onClose = { musicExperience = null }, onSettings = {
+                    musicExperience = null
+                    showDownloadsFolder = false
+                    viewModel.openSettings()
+                })
+            }
+
             if (showLanguageRestartDialog) {
                 LanguageRestartDialog(
                     onRestart = {
@@ -3623,7 +3658,6 @@ fun LevyraApp(
                         )
                     },
                     isPinnedToHome = SpeedDial.songKey(target)?.let { key -> state.speedDialPins.any { it.key == key } } == true,
-                    homePinsFull = state.speedDialPins.size >= SpeedDial.MAX_PINS,
                     onTogglePinToHome = { viewModel.toggleSpeedDialTrack(target) }
                 )
             }
@@ -4554,15 +4588,10 @@ private fun AlbumOverlay(
                                 text = {
                                     val copy = strings.speedDialCopy()
                                     Text(
-                                        when {
-                                            albumPinned -> copy.removeFromHome
-                                            state.speedDialPins.size >= SpeedDial.MAX_PINS -> copy.homeFull
-                                            else -> copy.addToHome
-                                        }
+                                        if (albumPinned) copy.removeFromHome else copy.addToHome
                                     )
                                 },
                                 leadingIcon = { Icon(Icons.Rounded.PushPin, null) },
-                                enabled = albumPinned || state.speedDialPins.size < SpeedDial.MAX_PINS,
                                 onClick = {
                                     albumMenuExpanded = false
                                     onTogglePinToHome(album)
@@ -5064,7 +5093,6 @@ private fun ArtistOverlay(
     BackHandler(enabled = selection.isActive) { selection.exit() }
     val pinnedToHome = profile != null && SpeedDial.artistKey(profile.name, profile.browseId)
         ?.let { key -> state.speedDialPins.any { it.key == key } } == true
-    val homePinsFull = state.speedDialPins.size >= SpeedDial.MAX_PINS
     val isFollowed = profile != null && (
         (profile.browseId.isNotBlank() && profile.browseId in state.followedArtistKeys) ||
             profile.name.trim().lowercase() in state.followedArtistKeys
@@ -5253,7 +5281,6 @@ private fun ArtistOverlay(
                                 isExcluded = isExcluded,
                                 onToggleExclude = { onToggleExclude(artist.browseId, artist.name) },
                                 isPinnedToHome = pinnedToHome,
-                                homePinsFull = homePinsFull,
                                 onTogglePinToHome = { onTogglePinToHome(artist) }
                             )
                             if (artist.hasBio && !LevyraIsSpotify && !LevyraIsAppleMusic) {
@@ -5465,7 +5492,6 @@ private fun ArtistOverlay(
                             isExcluded = isExcluded,
                             onToggleExclude = { onToggleExclude(profile.browseId, profile.name) },
                             isPinnedToHome = pinnedToHome,
-                            homePinsFull = homePinsFull,
                             onTogglePinToHome = { onTogglePinToHome(profile) },
                             onShuffle = profile.topSongs.takeIf { it.size > 1 }?.let { songs -> { onPlayAll(songs.shuffled()) } }
                         )
@@ -6222,7 +6248,6 @@ private fun ArtistActionBar(
     isExcluded: Boolean,
     onToggleExclude: () -> Unit,
     isPinnedToHome: Boolean,
-    homePinsFull: Boolean,
     onTogglePinToHome: () -> Unit
 ) {
     val strings = LocalLevyraStrings.current
@@ -6268,7 +6293,6 @@ private fun ArtistActionBar(
                 isExcluded = isExcluded,
                 onToggleExclude = onToggleExclude,
                 isPinnedToHome = isPinnedToHome,
-                homePinsFull = homePinsFull,
                 onTogglePinToHome = onTogglePinToHome
             )
         }
@@ -7603,12 +7627,15 @@ private fun LyricsOverlay(
     onTogglePlay: () -> Unit,
     onNext: () -> Unit,
     onOpenLyricsStudio: () -> Unit = {},
+    onUpdateLyricsStudio: (com.luc4n3x.levyra.domain.LevyraLyricsStudioSettings) -> Unit = {},
+    onSeekFraction: (Float) -> Unit = {},
     onClose: () -> Unit
 ) {
     val strings = LocalLevyraStrings.current
     val track = state.currentTrack
+    val appleLyrics = state.lyricsStudioSettings.usesAppleMusicLyrics(LevyraIsAppleMusic)
     val overlayConfiguration = LocalConfiguration.current
-    val landscapeLayout = lyricsLandscapeLayoutActive(overlayConfiguration)
+    val landscapeLayout = !appleLyrics && lyricsLandscapeLayoutActive(overlayConfiguration)
     val landscapeMetrics = if (landscapeLayout) {
         lyricsLandscapeMetrics(
             widthDp = overlayConfiguration.screenWidthDp.toFloat(),
@@ -7730,18 +7757,28 @@ private fun LyricsOverlay(
             selectedRange = null
         }
     }
-    val visualActiveIndex = remember(visibleLyrics, syncedLyrics, lyricsAnimationsEnabled, lyricsPositionProvider) {
-        derivedStateOf {
-            if (syncedLyrics) {
-                activeLyricIndex(
-                    lyricsLineFocusPositionMs(lyricsPositionProvider(), lyricsAnimationsEnabled),
-                    visibleLyrics
-                )
-            } else {
-                -1
+    fun onLyricLineClick(index: Int, line: LyricLine) {
+        if (selectionMode) {
+            selectedRange = toggleLyricsShareSelection(selectedRange, index, visibleLyrics)
+            haptics.perform(LevyraHapticAction.TrackSwipe)
+        } else if (calibrateMode && state.lyricsSynced) {
+            track?.id?.let { trackId ->
+                onSetTrackOffset(trackId, calibratedLyricsTrackOffset(lyricsClock.positionMs, line.startMs, latencyOffsetMs))
             }
+            calibrateMode = false
+            haptics.perform(LevyraHapticAction.TrackSwipe)
+        } else if (state.lyricsSynced) {
+            onSeekToMs((line.startMs + lyricsOffsetMs).coerceAtLeast(0L))
         }
-    }.value
+    }
+    fun onLyricLineLongClick(index: Int, line: LyricLine) {
+        if (isLyricsShareSelectable(line)) {
+            selectionMode = true
+            calibrateMode = false
+            selectedRange = toggleLyricsShareSelection(selectedRange, index, visibleLyrics)
+            haptics.perform(LevyraHapticAction.TrackSwipe)
+        }
+    }
     val backgroundActiveIndex = remember(visibleLyrics, backgroundLineIndices, syncedLyrics, lyricsPositionProvider) {
         derivedStateOf {
             if (!syncedLyrics || backgroundLineIndices.isEmpty()) {
@@ -7827,12 +7864,12 @@ private fun LyricsOverlay(
         }
     }
 
-    val scrollFocusIndex = instrumentalGap?.nextLineIndex ?: visualActiveIndex
+    val scrollFocusIndex = instrumentalGap?.nextLineIndex ?: timedActiveIndex
 
     val followActiveLine = lyricsShouldFollowActiveLine(autoScrollEnabled, selectionMode)
 
-    LaunchedEffect(scrollFocusIndex, lyricsStartIndex, followActiveLine, viewMode, visibleLyrics.size, landscapeLayout) {
-        if (scrollFocusIndex >= 0 && followActiveLine) {
+    LaunchedEffect(scrollFocusIndex, lyricsStartIndex, followActiveLine, viewMode, visibleLyrics.size, landscapeLayout, appleLyrics) {
+        if (scrollFocusIndex >= 0 && followActiveLine && !appleLyrics) {
             runCatching {
                 val targetIndex = lyricsStartIndex + scrollFocusIndex
                 val targetVisible = listState.layoutInfo.visibleItemsInfo.any { it.index == targetIndex }
@@ -7934,6 +7971,31 @@ private fun LyricsOverlay(
             .consumeOverlayTouches()
     ) {
         val studioSettings = state.lyricsStudioSettings
+        val lyricsDepthBlur = lyricsAnimationsEnabled &&
+            studioSettings.blurEnabled &&
+            LocalLevyraVisualCapabilities.current.heavyBlur
+        if (appleLyrics) {
+            AppleLyricsOverlayScreen(
+                state = state,
+                lines = visibleLyrics,
+                position = lyricsPositionProvider,
+                showTranslation = showTranslation,
+                showSecondaryVoices = showSecondaryVoices,
+                animations = lyricsAnimationsEnabled,
+                heavyBlur = LocalLevyraVisualCapabilities.current.heavyBlur,
+                selectionMode = selectionMode,
+                selectedRange = selectedRange,
+                onLineClick = { index, line -> onLyricLineClick(index, line) },
+                onLineLongClick = { index, line -> onLyricLineLongClick(index, line) },
+                onSeekFraction = onSeekFraction,
+                onPrevious = onPrevious,
+                onTogglePlay = onTogglePlay,
+                onNext = onNext,
+                onTranslation = onTranslation,
+                onOptions = { showLyricsOptions = true },
+                onClose = onClose
+            )
+        } else {
         if (studioSettings.spotifyLyricsApplies()) {
             SpotifyLyricsBackdrop(track)
         } else if (landscapeLayout && studioSettings.backgroundMode !in setOf(
@@ -7970,6 +8032,16 @@ private fun LyricsOverlay(
                             )
                         )
                     )
+            )
+        } else if (lyricsAmbientSkinActive() && studioSettings.backgroundMode == LyricsBackgroundMode.ORIGINAL) {
+            LyricsAmbientBackdrop(
+                artworkUrl = track?.let { it.largeThumbnailUrl.ifBlank { it.thumbnailUrl } },
+                trackKey = track?.id.orEmpty(),
+                accentStart = accentStart,
+                accentEnd = accentEnd,
+                motionEnabled = lyricsAnimationsEnabled &&
+                    LocalLevyraVisualCapabilities.current.decorativeMotion &&
+                    state.isPlaying
             )
         } else {
             LevyraBackground()
@@ -8210,18 +8282,18 @@ private fun LyricsOverlay(
                         positionProvider = lyricsPositionProvider,
                         instrumentalGap = lineInstrumentalGap,
                         isActive = timedActive,
-                        isPrimaryActive = index == visualActiveIndex,
+                        isPrimaryActive = index == timedActiveIndex,
                         synced = state.lyricsSynced,
                         viewMode = viewMode,
                         distanceFromActive = when {
                             !followActiveLine -> 0
                             lineInstrumentalGap != null -> 0
-                            visualActiveIndex >= 0 -> kotlin.math.abs(index - visualActiveIndex)
+                            timedActiveIndex >= 0 -> kotlin.math.abs(index - timedActiveIndex)
                             else -> 0
                         },
                         focusMode = lyricsFocusMode,
                         layoutWidthDp = landscapeMetrics?.lyricsPaneWidthDp?.toInt(),
-                        blurEnabled = lyricsAnimationsEnabled,
+                        blurEnabled = lyricsDepthBlur,
                         animationsEnabled = lyricsAnimationsEnabled,
                         sectionLabel = sectionStarts[index]?.let { lyricSectionLabel(strings, it) },
                         showRomanization = showRomanization,
@@ -8239,7 +8311,7 @@ private fun LyricsOverlay(
                                 track?.id?.let { trackId ->
                                     onSetTrackOffset(
                                         trackId,
-                                        calibratedLyricsTrackOffset(state.positionMs, line.startMs, latencyOffsetMs)
+                                        calibratedLyricsTrackOffset(lyricsClock.positionMs, line.startMs, latencyOffsetMs)
                                     )
                                 }
                                 calibrateMode = false
@@ -8278,6 +8350,7 @@ private fun LyricsOverlay(
                     true
                 )
             }
+        }
         }
         AnimatedVisibility(
             visible = showSyncBar && state.lyricsSynced && track != null && !selectionMode,
@@ -8343,7 +8416,42 @@ private fun LyricsOverlay(
             }
         )
     }
-    if (showLyricsOptions) {
+    if (showLyricsOptions && appleLyrics) {
+        AppleLyricsOverlayOptions(
+            state = state,
+            lines = visibleLyrics,
+            hasRomanization = hasRomanization,
+            hasMultipleVoices = hasMultipleVoices,
+            showSecondaryVoices = showSecondaryVoices,
+            canShareLyrics = canShareLyrics,
+            trackOffsetMs = trackLyricsOffsetMs,
+            capabilities = LocalLevyraVisualCapabilities.current,
+            onTranslation = onTranslation,
+            onUpdateStudio = onUpdateLyricsStudio,
+            onSecondaryVoices = { showSecondaryVoices = it },
+            onAction = { action ->
+                showLyricsOptions = false
+                when (action) {
+                    AppleLyricsOverlayAction.CHANGE_LYRICS -> {
+                        showVersions = true
+                        onLoadVersions()
+                    }
+                    AppleLyricsOverlayAction.SHARE -> toggleShareMode()
+                    AppleLyricsOverlayAction.SYNC -> showSyncSheet = true
+                    AppleLyricsOverlayAction.CALIBRATE -> {
+                        calibrateMode = !calibrateMode
+                        if (calibrateMode) {
+                            selectionMode = false
+                            selectedRange = null
+                        }
+                    }
+                    AppleLyricsOverlayAction.ANALYSIS -> showIntelligenceDialog = true
+                    AppleLyricsOverlayAction.STUDIO -> onOpenLyricsStudio()
+                }
+            },
+            onDismiss = { showLyricsOptions = false }
+        )
+    } else if (showLyricsOptions) {
         ModalBottomSheet(
             onDismissRequest = { showLyricsOptions = false },
             sheetState = rememberBottomSheetState(
@@ -8405,6 +8513,15 @@ private fun LyricsOverlay(
                     onClick = {
                         showLyricsOptions = false
                         onOpenLyricsStudio()
+                    }
+                )
+                LyricsControlChip(
+                    label = appleLyricsStyleChipLabel(strings.code),
+                    selected = false,
+                    icon = Icons.Rounded.FormatQuote,
+                    onClick = {
+                        showLyricsOptions = false
+                        onUpdateLyricsStudio(state.lyricsStudioSettings.withAppleMusicViewer())
                     }
                 )
                 LyricsControlChip(
@@ -8543,213 +8660,6 @@ private fun LyricsOverlay(
     }
 }
 
-@Composable
-private fun LyricsShareBar(
-    selectedCount: Int,
-    maxCount: Int,
-    canContinue: Boolean,
-    accent: Color,
-    onCopy: () -> Unit,
-    onCancel: () -> Unit,
-    onContinue: () -> Unit
-) {
-    val strings = LocalLevyraStrings.current
-    Surface(
-        color = Color.Black.copy(alpha = 0.78f),
-        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.14f)),
-        shape = RoundedCornerShape(26.dp),
-        modifier = Modifier.fillMaxWidth()
-    ) {
-        Row(
-            modifier = Modifier.padding(start = 18.dp, end = 8.dp, top = 8.dp, bottom = 8.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            Column(
-                modifier = Modifier
-                    .weight(1f)
-                    .semantics { liveRegion = LiveRegionMode.Polite }
-            ) {
-                if (selectedCount == 0) {
-                    Text(
-                        text = strings.shareLyricsHint,
-                        color = Color.White.copy(alpha = 0.78f),
-                        fontSize = 13.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        maxLines = 2,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                } else {
-                    Text(
-                        text = "$selectedCount/$maxCount",
-                        color = Color.White,
-                        fontSize = 17.sp,
-                        fontWeight = FontWeight.Black
-                    )
-                    Text(
-                        text = strings.linesLabel,
-                        color = Color.White.copy(alpha = 0.62f),
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.SemiBold
-                    )
-                }
-            }
-            if (selectedCount > 0) {
-                CircleIconButton(
-                    icon = Icons.Rounded.ContentCopy,
-                    tint = Color.White,
-                    background = Color.White.copy(alpha = 0.13f),
-                    onClick = onCopy,
-                    contentDescription = strings.copyVerses
-                )
-            }
-            CircleIconButton(
-                icon = Icons.Rounded.Close,
-                tint = Color.White,
-                background = Color.White.copy(alpha = 0.13f),
-                onClick = onCancel,
-                contentDescription = strings.cancel
-            )
-            Button(
-                onClick = onContinue,
-                enabled = canContinue,
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = LevyraCyan,
-                    contentColor = LevyraOnAccent,
-                    disabledContainerColor = Color.White.copy(alpha = 0.10f),
-                    disabledContentColor = Color.White.copy(alpha = 0.40f)
-                ),
-                shape = CircleShape,
-                modifier = Modifier.heightIn(min = 46.dp)
-            ) {
-                Text(strings.shareLyricsContinue, fontWeight = FontWeight.Black, maxLines = 1)
-            }
-        }
-    }
-}
-
-@Composable
-private fun LyricsVersionDialog(
-    versions: List<com.luc4n3x.levyra.data.LyricsRepository.LyricsVersion>,
-    loading: Boolean,
-    strings: LevyraStrings,
-    onAutomatic: () -> Unit,
-    onSelect: (com.luc4n3x.levyra.data.LyricsRepository.LyricsVersion) -> Unit,
-    onDismiss: () -> Unit
-) {
-    Dialog(onDismissRequest = onDismiss) {
-        Surface(
-            color = Color(0xFF11131C),
-            shape = RoundedCornerShape(30.dp),
-            border = BorderStroke(1.dp, Color.White.copy(alpha = 0.10f)),
-            modifier = Modifier.fillMaxWidth().fillMaxHeight(0.82f)
-        ) {
-            Column(
-                modifier = Modifier.padding(18.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(strings.lyricsVersions, color = Color.White, fontSize = 21.sp, fontWeight = FontWeight.Black)
-                        Text(strings.changeLyrics, color = Color.White.copy(alpha = 0.58f), fontSize = 12.sp)
-                    }
-                    CircleIconButton(
-                        icon = Icons.Rounded.Close,
-                        tint = Color.White,
-                        background = Color.White.copy(alpha = 0.10f),
-                        onClick = onDismiss,
-                        contentDescription = strings.close
-                    )
-                }
-                Surface(
-                    color = LevyraCyan.copy(alpha = 0.14f),
-                    shape = RoundedCornerShape(18.dp),
-                    border = BorderStroke(1.dp, LevyraCyan.copy(alpha = 0.28f)),
-                    modifier = Modifier.fillMaxWidth().pressable(onClick = onAutomatic)
-                ) {
-                    Row(
-                        modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(10.dp)
-                    ) {
-                        Icon(Icons.Rounded.Refresh, null, tint = LevyraCyan)
-                        Text(strings.automaticLyrics, color = Color.White, fontWeight = FontWeight.Black)
-                    }
-                }
-                when {
-                    loading && versions.isEmpty() -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        CircularProgressIndicator(color = LevyraCyan)
-                    }
-                    versions.isEmpty() -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        Text(strings.lyricsUnavailable, color = Color.White.copy(alpha = 0.64f))
-                    }
-                    else -> LazyColumn(
-                        verticalArrangement = Arrangement.spacedBy(9.dp),
-                        contentPadding = PaddingValues(bottom = 8.dp)
-                    ) {
-                        items(versions, key = { it.id }) { version ->
-                            val preview = version.result.lines
-                                .asSequence()
-                                .filterNot { it.isMetadata || it.isInstrumental }
-                                .take(2)
-                                .joinToString(" · ") { it.text }
-                            Surface(
-                                color = if (version.selected) LevyraViolet.copy(alpha = 0.18f) else Color.White.copy(alpha = 0.05f),
-                                shape = RoundedCornerShape(20.dp),
-                                border = BorderStroke(
-                                    1.dp,
-                                    if (version.selected) LevyraViolet.copy(alpha = 0.40f) else Color.White.copy(alpha = 0.07f)
-                                ),
-                                modifier = Modifier.fillMaxWidth().pressable { onSelect(version) }
-                            ) {
-                                Column(
-                                    modifier = Modifier.padding(14.dp),
-                                    verticalArrangement = Arrangement.spacedBy(5.dp)
-                                ) {
-                                    Row(verticalAlignment = Alignment.CenterVertically) {
-                                        Text(
-                                            version.result.provider,
-                                            color = if (version.selected) LevyraViolet else Color.White,
-                                            fontSize = 14.sp,
-                                            fontWeight = FontWeight.Black,
-                                            modifier = Modifier.weight(1f)
-                                        )
-                                        Text(
-                                            buildString {
-                                                append(if (version.result.synced) strings.synced else strings.lyrics)
-                                                append(" · ").append(version.result.confidence).append('%')
-                                            },
-                                            color = Color.White.copy(alpha = 0.56f),
-                                            fontSize = 11.sp,
-                                            fontWeight = FontWeight.Bold
-                                        )
-                                    }
-                                    Text(
-                                        "${version.title} — ${version.artist}",
-                                        color = Color.White.copy(alpha = 0.76f),
-                                        fontSize = 12.sp,
-                                        maxLines = 1,
-                                        overflow = TextOverflow.Ellipsis
-                                    )
-                                    if (preview.isNotBlank()) {
-                                        Text(
-                                            preview,
-                                            color = Color.White.copy(alpha = 0.48f),
-                                            fontSize = 11.sp,
-                                            maxLines = 2,
-                                            overflow = TextOverflow.Ellipsis
-                                        )
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
-}
-
 private const val LYRICS_AUTO_SCROLL_RESUME_MS = 3_500L
 private const val LYRICS_BACKDROP_DECODE_PX = 96
 
@@ -8863,6 +8773,7 @@ internal fun KaraokeWordTimedText(
     val timedText = remember(lineText, words) { buildTimedLyricText(lineText, words) }
     val karaokeEasing = remember { CubicBezierEasing(0.18f, 0f, 0.20f, 1f) }
     val clipPath = remember { Path() }
+    val fillFront = remember { KaraokeFillFront() }
     val contentAlignment = when (textAlign) {
         TextAlign.Center -> Alignment.Center
         TextAlign.End, TextAlign.Right -> Alignment.CenterEnd
@@ -8900,6 +8811,7 @@ internal fun KaraokeWordTimedText(
                     style = TextStyle(shadow = shadow),
                     modifier = Modifier
                         .matchParentSize()
+                        .graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen }
                         .drawWithContent {
                             val layoutResult = textLayoutResult ?: return@drawWithContent
                             val characterProgress = karaokeCharacterProgress(
@@ -8908,15 +8820,19 @@ internal fun KaraokeWordTimedText(
                                 easing = karaokeEasing
                             )
                             if (characterProgress <= 0f) return@drawWithContent
+                            val featherPx = fontSize.toPx() * KARAOKE_FILL_FEATHER_EM
                             val path = buildKaraokeGlyphPath(
                                 path = clipPath,
                                 layoutResult = layoutResult,
                                 textLength = timedText.text.length,
-                                characterProgress = characterProgress
+                                characterProgress = characterProgress,
+                                featherPx = featherPx,
+                                front = fillFront
                             )
                             clipPath(path) {
                                 this@drawWithContent.drawContent()
                             }
+                            if (fillFront.active) drawKaraokeFillFeather(fillFront)
                         }
                 )
             }
@@ -8929,13 +8845,50 @@ internal const val LYRICS_HORIZONTAL_GUTTER_DP = 48
 internal const val LYRICS_ACTIVE_LINE_SCALE = 1.025f
 internal const val LYRICS_COMPACT_ACTIVE_LINE_SCALE = 1.018f
 
+private fun lyricsAmbientSkinActive(): Boolean =
+    !LevyraIsIvory && !LevyraIsSpotify && !LevyraIsAppleMusic && !LevyraIsYouTubeMusic
+
+private const val KARAOKE_FILL_FEATHER_EM = 0.55f
+
+private class KaraokeFillFront {
+    var active = false
+    var x = 0f
+    var top = 0f
+    var bottom = 0f
+    var rtl = false
+    var feather = 0f
+}
+
+private fun DrawScope.drawKaraokeFillFeather(front: KaraokeFillFront) {
+    val featherPx = front.feather
+    if (featherPx <= 0.5f || front.bottom <= front.top) return
+    val from = front.x - featherPx
+    val to = front.x + featherPx
+    val colors = if (front.rtl) KaraokeFeatherRtl else KaraokeFeatherLtr
+    drawRect(
+        brush = Brush.horizontalGradient(colors, startX = from, endX = to),
+        topLeft = Offset(from, front.top),
+        size = Size(to - from, front.bottom - front.top),
+        blendMode = BlendMode.DstIn
+    )
+}
+
+internal fun karaokeFeatherWidth(featherPx: Float, remainingToLineEndPx: Float): Float =
+    minOf(featherPx, remainingToLineEndPx).coerceAtLeast(0f)
+
+private val KaraokeFeatherLtr = listOf(Color.White, Color.Transparent)
+private val KaraokeFeatherRtl = listOf(Color.Transparent, Color.White)
+
 private fun buildKaraokeGlyphPath(
     path: Path,
     layoutResult: TextLayoutResult,
     textLength: Int,
-    characterProgress: Float
+    characterProgress: Float,
+    featherPx: Float,
+    front: KaraokeFillFront
 ): Path {
     path.reset()
+    front.active = false
     if (textLength == 0 || characterProgress <= 0f) return path
     val boundedProgress = characterProgress.coerceIn(0f, textLength.toFloat())
     val completedCharacters = boundedProgress.toInt().coerceIn(0, textLength)
@@ -8974,7 +8927,16 @@ private fun buildKaraokeGlyphPath(
             layoutResult.getHorizontalPosition(nextOffset, usePrimaryDirection = true)
         }
         val currentX = charStart + (charEnd - charStart) * fraction
-        path.addRectangle(minOf(startX, currentX), top, maxOf(startX, currentX), bottom)
+        val lineEndX = if (isRtl) layoutResult.getLineLeft(activeLine) else layoutResult.getLineRight(activeLine)
+        val feather = karaokeFeatherWidth(featherPx, kotlin.math.abs(lineEndX - currentX))
+        val reachX = if (isRtl) currentX - feather else currentX + feather
+        path.addRectangle(minOf(startX, reachX), top, maxOf(startX, reachX), bottom)
+        front.active = true
+        front.x = currentX
+        front.top = top
+        front.bottom = bottom
+        front.rtl = isRtl
+        front.feather = feather
     }
     return path
 }
@@ -8988,96 +8950,6 @@ private fun Path.addRectangle(left: Float, top: Float, right: Float, bottom: Flo
     close()
 }
 
-
-@Composable
-private fun LyricsIntelligenceDialog(
-    summary: com.luc4n3x.levyra.domain.LevyraIntelligenceSummary,
-    onDismiss: () -> Unit,
-    onJumpToChorus: (() -> Unit)?
-) {
-    val strings = LocalLevyraStrings.current
-    val repeatedPhrase = summary.repeatedPhrases.firstOrNull()
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        containerColor = Color(0xFF11131C),
-        icon = {
-            Icon(
-                imageVector = Icons.Rounded.Insights,
-                contentDescription = null,
-                tint = LevyraViolet,
-                modifier = Modifier.size(24.dp)
-            )
-        },
-        title = {
-            Text(
-                text = strings.openLyricsAnalysis,
-                color = LevyraText,
-                fontWeight = FontWeight.Black
-            )
-        },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                if (summary.mood.isNotBlank()) {
-                    Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
-                        Text(strings.atmosphere, color = LevyraMuted, fontSize = 11.sp, fontWeight = FontWeight.Bold)
-                        Text(summary.mood, color = LevyraText, fontSize = 14.sp, fontWeight = FontWeight.Bold)
-                    }
-                }
-                if (summary.themes.isNotEmpty()) {
-                    Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
-                        Text(strings.themes, color = LevyraMuted, fontSize = 11.sp, fontWeight = FontWeight.Bold)
-                        Text(
-                            text = summary.themes.take(4).joinToString(" · "),
-                            color = LevyraText,
-                            fontSize = 14.sp,
-                            lineHeight = 19.sp,
-                            fontWeight = FontWeight.Bold
-                        )
-                    }
-                }
-                if (!repeatedPhrase.isNullOrBlank()) {
-                    Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
-                        Text(strings.chorusDetected, color = LevyraMuted, fontSize = 11.sp, fontWeight = FontWeight.Bold)
-                        Text(
-                            text = "“$repeatedPhrase”",
-                            color = LevyraText.copy(alpha = 0.9f),
-                            fontSize = 14.sp,
-                            lineHeight = 19.sp,
-                            fontWeight = FontWeight.SemiBold,
-                            maxLines = 3,
-                            overflow = TextOverflow.Ellipsis
-                        )
-                    }
-                }
-                Text(
-                    text = strings.formatLyricsAnalysis(summary.lineCount, summary.wordCount),
-                    color = LevyraMuted.copy(alpha = 0.82f),
-                    fontSize = 11.sp,
-                    lineHeight = 15.sp,
-                    fontWeight = FontWeight.SemiBold
-                )
-            }
-        },
-        confirmButton = {
-            if (onJumpToChorus != null) {
-                TextButton(onClick = onJumpToChorus) {
-                    Text(strings.goToChorus, color = LevyraCyan, fontWeight = FontWeight.Black)
-                }
-            } else {
-                TextButton(onClick = onDismiss) {
-                    Text(strings.close, color = LevyraCyan, fontWeight = FontWeight.Black)
-                }
-            }
-        },
-        dismissButton = {
-            if (onJumpToChorus != null) {
-                TextButton(onClick = onDismiss) {
-                    Text(strings.close, color = LevyraMuted, fontWeight = FontWeight.Bold)
-                }
-            }
-        }
-    )
-}
 
 private const val LIVE_TRANSLATE_SETTINGS_ACTION = "com.android.settings.action.live_translate"
 
@@ -16921,75 +16793,6 @@ private fun DownloadsFolderCard(count: Int, onClick: () -> Unit) {
 }
 
 @Composable
-private fun DownloadsFolderOverlay(
-    state: LevyraUiState,
-    viewModel: LevyraViewModel,
-    onClose: () -> Unit
-) {
-    val strings = LocalLevyraStrings.current
-    val downloadsAccent = rememberNowPlayingAccent(state.currentTrack, LevyraCyan)
-    val downloadsStyle = LevyraConnectedDefaults.style(accent = downloadsAccent)
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(LevyraInk)
-    ) {
-        LazyColumn(
-            modifier = Modifier
-                .fillMaxSize()
-                .statusBarsPadding(),
-            contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = levyraTabContentBottomPadding(state.currentTrack != null)),
-            verticalArrangement = Arrangement.spacedBy(downloadsStyle.gap)
-        ) {
-            item(contentType = "downloads-header") {
-                Row(
-                    modifier = Modifier.fillMaxWidth().padding(top = 12.dp, bottom = 18.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    LevyraBackButton(onClick = onClose, contentDescription = LocalLevyraStrings.current.back)
-                    Spacer(Modifier.width(8.dp))
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            text = LocalLevyraStrings.current.offlineDownloadsPlain,
-                            color = LevyraText,
-                            fontSize = 24.sp,
-                            fontWeight = FontWeight.Black
-                        )
-                        Text(
-                            text = strings.formatSavedTrackCount(state.downloads.size),
-                            color = LevyraMuted,
-                            fontSize = 14.sp
-                        )
-                    }
-                }
-            }
-            if (state.downloads.isEmpty()) {
-                item {
-                    EmptyState(strings.noOfflineDownloads)
-                }
-            } else {
-                itemsIndexed(
-                    state.downloads,
-                    key = { _, download -> "dlfolder-${download.id}" },
-                    contentType = { _, _ -> "download-saved" }
-                ) { downloadIndex, download ->
-                    DownloadRow(
-                        download = download,
-                        isCurrent = download.trackId == state.currentTrack?.id,
-                        isPlaying = state.isPlaying,
-                        position = LevyraConnectedPosition.of(downloadIndex, state.downloads.size),
-                        style = downloadsStyle,
-                        accent = downloadsAccent,
-                        onPlay = { viewModel.playDownloaded(download) },
-                        onDelete = { viewModel.deleteDownload(download) }
-                    )
-                }
-            }
-        }
-    }
-}
-
-@Composable
 private fun LibraryScreen(
     viewModel: LibraryViewModel,
     state: LevyraUiState,
@@ -18012,66 +17815,6 @@ private fun LibraryEmptyState(
 
 private fun cleanLibraryLabel(value: String): String {
     return value.dropWhile { !it.isLetterOrDigit() }.trim()
-}
-
-@Composable
-private fun DownloadRow(
-    download: DownloadedTrack,
-    isCurrent: Boolean,
-    isPlaying: Boolean,
-    position: LevyraConnectedPosition,
-    style: LevyraConnectedStyle,
-    accent: Color,
-    onPlay: () -> Unit,
-    onDelete: () -> Unit
-) {
-    val strings = LocalLevyraStrings.current
-    val artworkBrush = remember(accent) {
-        Brush.linearGradient(listOf(accent.copy(alpha = 0.32f), LevyraViolet.copy(alpha = 0.28f)))
-    }
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .levyraConnectedSurface(position, style, selected = isCurrent)
-            .levyraPressable(onClick = onPlay, pressedScale = LevyraPressScale.Row)
-            .padding(horizontal = 10.dp, vertical = 9.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(14.dp)
-    ) {
-        Box(
-            modifier = Modifier
-                .size(54.dp)
-                .clip(DownloadRowArtworkShape)
-                .background(artworkBrush),
-            contentAlignment = Alignment.Center
-        ) {
-            if (isCurrent) {
-                LevyraPlayingIndicator(
-                    playing = isPlaying,
-                    color = accent,
-                    size = 20.dp,
-                    contentDescription = strings.playing
-                )
-            } else {
-                Icon(Icons.Rounded.DownloadDone, null, tint = accent, modifier = Modifier.size(24.dp))
-            }
-        }
-        Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-            Text(download.title, color = if (isCurrent) accent else LevyraText, fontSize = 16.sp, fontWeight = FontWeight.Black, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            Text(download.artist, color = LevyraMuted, fontSize = 14.sp, fontWeight = FontWeight.Medium, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            Text(
-                if (download.embeddedMetadata) "Music/Levyra · ${LocalLevyraStrings.current.coverAndTags}" else "Music/Levyra",
-                color = LevyraMuted.copy(alpha = 0.7f),
-                fontSize = 11.sp,
-                fontWeight = FontWeight.SemiBold,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
-        }
-        IconButton(onClick = onDelete) {
-            Icon(Icons.Rounded.Delete, contentDescription = LocalLevyraStrings.current.remove, tint = LevyraMuted, modifier = Modifier.size(22.dp))
-        }
-    }
 }
 
 @Composable
@@ -19312,6 +19055,9 @@ private fun PlayerAdvancedControlsPanel(
                 lyrics = state.lyrics,
                 lyricsLoading = state.lyricsLoading,
                 positionMs = state.positionMs,
+                isPlaying = state.isPlaying,
+                playbackSpeed = state.audioSettings.playbackSpeed,
+                synced = state.lyricsSynced,
                 durationMs = state.durationMs,
                 primaryContent = primaryContent,
                 compact = compact,
@@ -19640,6 +19386,9 @@ private fun PlayerInlineLyricsSection(
     lyrics: List<com.luc4n3x.levyra.domain.LyricLine>,
     lyricsLoading: Boolean,
     positionMs: Long,
+    isPlaying: Boolean,
+    playbackSpeed: Float,
+    synced: Boolean,
     durationMs: Long,
     primaryContent: Color,
     compact: Boolean,
@@ -19694,11 +19443,15 @@ private fun PlayerInlineLyricsSection(
         lyrics.isNotEmpty() -> {
             val listState = rememberLazyListState()
             val lyricsAnimationsEnabled = LocalAnimationsEnabled.current
-            val visualActiveIndex = remember(lyrics, positionMs, lyricsAnimationsEnabled) {
-                activeLyricIndex(
-                    lyricsLineFocusPositionMs(positionMs, lyricsAnimationsEnabled),
-                    lyrics
-                )
+            val inlineClock = rememberLyricsPlaybackClock(
+                trackKey = trackId,
+                reportedPositionMs = positionMs,
+                isPlaying = isPlaying,
+                speed = playbackSpeed,
+                smoothingEnabled = synced && lyricsAnimationsEnabled
+            )
+            val visualActiveIndex by remember(lyrics, inlineClock) {
+                derivedStateOf { activeLyricIndex(inlineClock.positionMs, lyrics) }
             }
             var inlineAutoScroll by remember(trackId) { mutableStateOf(true) }
             var inlineAutoScrolling by remember(trackId) { mutableStateOf(false) }
@@ -21218,6 +20971,28 @@ private fun SettingsOverlay(
                                     onSelect = { value -> onVideoQualityTarget(VideoQualityTarget.fromStorage(value)) }
                                 )
                             }
+                            item {
+                                SettingsChoiceRow(
+                                    icon = Icons.Rounded.MusicVideo,
+                                    title = strings.musicVideoPreference,
+                                    subtitle = strings.musicVideoPreferenceSubtitle,
+                                    options = MusicVideoPlaybackPreference.entries.map { preference ->
+                                        preference.storageValue to when (preference) {
+                                            MusicVideoPlaybackPreference.Automatic -> strings.musicVideoAutomatic
+                                            MusicVideoPlaybackPreference.PreferAudio -> strings.musicVideoPreferAudio
+                                            MusicVideoPlaybackPreference.PreferVideo -> strings.musicVideoPreferVideo
+                                            MusicVideoPlaybackPreference.RememberLast -> strings.musicVideoRememberLast
+                                        }
+                                    },
+                                    selected = interfaceSettings.musicVideoPreference.storageValue,
+                                    onSelect = { value ->
+                                        onInterfaceSettings(
+                                            interfaceSettings.copy(musicVideoPreference = MusicVideoPlaybackPreference.fromStorage(value))
+                                        )
+                                    }
+                                )
+                            }
+                            immersiveModeSettingsItems(interfaceSettings, strings, onInterfaceSettings)
                             skinSettingsItems(interfaceSettings.skin, defaults = {
                             item {
                                 SettingsChoiceRow(
@@ -23513,6 +23288,7 @@ private fun GreetingBar(
                 modifier = Modifier.weight(1f)
             )
         }
+        RewindEntry()
         HomeHeaderIconButton(
             icon = Icons.Rounded.Search,
             contentDescription = strings.search,
@@ -28084,6 +27860,76 @@ private fun formatDuration(ms: Long): String {
     val minutes = totalSeconds / 60L
     val seconds = totalSeconds % 60L
     return "$minutes:${seconds.toString().padStart(2, '0')}"
+}
+
+private fun SettingsGroupCollector.immersiveModeSettingsItems(
+    interfaceSettings: LevyraInterfaceSettings,
+    strings: LevyraStrings,
+    onInterfaceSettings: (LevyraInterfaceSettings) -> Unit
+) {
+    val immersive = interfaceSettings.immersive
+    fun update(value: LevyraImmersiveSettings) = onInterfaceSettings(interfaceSettings.copy(immersive = value))
+    standaloneItem { SettingsSectionLabel(strings.immersiveSection) }
+    item {
+        SettingsToggle(
+            icon = Icons.Rounded.VerticalAlignTop,
+            title = strings.immersiveHideStatusBar,
+            subtitle = strings.immersiveHideStatusBarSubtitle,
+            checked = immersive.statusBarHidden,
+            onCheckedChange = { hidden ->
+                update(
+                    immersive.copy(
+                        hideStatusBar = hidden,
+                        hideNavigationBar = immersive.navigationBarHidden,
+                        fullImmersive = hidden && immersive.fullImmersive
+                    )
+                )
+            }
+        )
+    }
+    item {
+        SettingsToggle(
+            icon = Icons.Rounded.VerticalAlignBottom,
+            title = strings.immersiveHideNavigationBar,
+            subtitle = strings.immersiveHideNavigationBarSubtitle,
+            checked = immersive.navigationBarHidden,
+            onCheckedChange = { hidden ->
+                update(
+                    immersive.copy(
+                        hideStatusBar = immersive.statusBarHidden,
+                        hideNavigationBar = hidden,
+                        fullImmersive = hidden && immersive.fullImmersive
+                    )
+                )
+            }
+        )
+    }
+    item {
+        SettingsToggle(
+            icon = Icons.Rounded.Fullscreen,
+            title = strings.immersiveFull,
+            subtitle = strings.immersiveFullSubtitle,
+            checked = immersive.fullImmersive,
+            onCheckedChange = { full ->
+                update(
+                    if (full) {
+                        immersive.copy(fullImmersive = true)
+                    } else {
+                        immersive.copy(fullImmersive = false, hideStatusBar = false, hideNavigationBar = false)
+                    }
+                )
+            }
+        )
+    }
+    item {
+        SettingsToggle(
+            icon = Icons.Rounded.Apps,
+            title = strings.immersiveEverywhere,
+            subtitle = strings.immersiveEverywhereSubtitle,
+            checked = immersive.everywhere,
+            onCheckedChange = { update(immersive.copy(everywhere = it)) }
+        )
+    }
 }
 
 private fun LazyListScope.skinSettingsItems(

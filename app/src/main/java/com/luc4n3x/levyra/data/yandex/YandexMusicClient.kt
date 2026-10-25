@@ -16,6 +16,7 @@ import org.json.JSONObject
 
 internal class YandexMusicClient(
     private val httpClient: OkHttpClient = OkHttpClient.Builder()
+        .dns(YandexResilientDns)
         .connectTimeout(15, TimeUnit.SECONDS)
         .readTimeout(20, TimeUnit.SECONDS)
         .build()
@@ -27,22 +28,35 @@ internal class YandexMusicClient(
             .add("device_name", "Levyra")
             .build()
 
-        val request = Request.Builder()
-            .url("https://oauth.yandex.ru/device/code")
-            .post(body)
-            .build()
+        val urls = listOf(
+            "https://oauth.yandex.ru/device/code",
+            "https://oauth.yandex.com/device/code"
+        )
 
-        httpClient.newCall(request).execute().use { response ->
-            if (!response.isSuccessful) throw IOException("Yandex device code error: ${response.code}")
-            val json = JSONObject(response.body?.string().orEmpty())
-            YandexDeviceCode(
-                deviceCode = json.getString("device_code"),
-                userCode = json.getString("user_code"),
-                verificationUrl = json.optString("verification_url", "https://ya.ru/device"),
-                expiresIn = json.optInt("expires_in", 300),
-                interval = json.optInt("interval", 5)
-            )
+        var lastException: Exception? = null
+        for (url in urls) {
+            try {
+                val request = Request.Builder()
+                    .url(url)
+                    .post(body)
+                    .build()
+
+                return@withContext httpClient.newCall(request).execute().use { response ->
+                    if (!response.isSuccessful) throw IOException("Yandex device code error: ${response.code}")
+                    val json = JSONObject(response.body?.string().orEmpty())
+                    YandexDeviceCode(
+                        deviceCode = json.getString("device_code"),
+                        userCode = json.getString("user_code"),
+                        verificationUrl = json.optString("verification_url", "https://ya.ru/device"),
+                        expiresIn = json.optInt("expires_in", 300),
+                        interval = json.optInt("interval", 5)
+                    )
+                }
+            } catch (e: Exception) {
+                lastException = e
+            }
         }
+        throw lastException ?: IOException("Failed to reach Yandex OAuth servers")
     }
 
     suspend fun pollDeviceAuth(deviceCode: String): String? = withContext(Dispatchers.IO) {
@@ -53,21 +67,38 @@ internal class YandexMusicClient(
             .add("client_secret", CLIENT_SECRET)
             .build()
 
-        val request = Request.Builder()
-            .url("https://oauth.yandex.ru/token")
-            .post(body)
-            .build()
+        val urls = listOf(
+            "https://oauth.yandex.ru/token",
+            "https://oauth.yandex.com/token"
+        )
 
-        httpClient.newCall(request).execute().use { response ->
-            val json = JSONObject(response.body?.string().orEmpty())
-            if (response.isSuccessful) {
-                return@use json.optString("access_token").takeIf { it.isNotBlank() }
+        var lastException: Exception? = null
+        for (url in urls) {
+            try {
+                val request = Request.Builder()
+                    .url(url)
+                    .post(body)
+                    .build()
+
+                return@withContext httpClient.newCall(request).execute().use { response ->
+                    val json = JSONObject(response.body?.string().orEmpty())
+                    if (response.isSuccessful) {
+                        return@use json.optString("access_token").takeIf { it.isNotBlank() }
+                    }
+                    val error = json.optString("error")
+                    if (error == "authorization_pending") return@use null
+                    if (error == "slow_down") return@use null
+                    throw IOException("Yandex auth error: $error (${json.optString("error_description")})")
+                }
+            } catch (e: Exception) {
+                if (e.message?.contains("authorization_pending") == true || e.message?.contains("slow_down") == true) {
+                    return@withContext null
+                }
+                lastException = e
             }
-            val error = json.optString("error")
-            if (error == "authorization_pending") return@use null
-            if (error == "slow_down") return@use null
-            throw IOException("Yandex auth error: $error (${json.optString("error_description")})")
         }
+        throw lastException ?: IOException("Failed to poll Yandex OAuth")
+    }
     }
 
     suspend fun fetchAccount(token: String): YandexAccount = withContext(Dispatchers.IO) {
