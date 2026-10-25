@@ -81,10 +81,42 @@ class YandexMusicSourceTest {
         assertTrue(lib.favorites.isEmpty() && lib.playlists.isEmpty())
     }
 
+    @Test
+    fun capabilities_offersHome_withHomeProvider() {
+        val source = YandexMusicSource(
+            catalog { _, _ -> empty() },
+            playback(),
+            homeProvider = home(emptyList())
+        )
+        assertEquals(setOf(SourceCapability.HOME), source.capabilities())
+    }
+
+    @Test
+    fun homeFeed_delegatesToProvider() = runBlocking {
+        val expected = listOf(
+            com.luc4n3x.levyra.domain.HomeSection(
+                title = "Чарт",
+                tracks = listOf(track(id = "yandex:1", source = "yandex_music"))
+            )
+        )
+        val source = YandexMusicSource(catalog { _, _ -> empty() }, playback(), homeProvider = home(expected))
+        assertSame(expected, source.homeFeed())
+    }
+
+    @Test
+    fun homeFeed_defaultsToEmpty_withoutProvider() = runBlocking {
+        val source = YandexMusicSource(catalog { _, _ -> empty() }, playback())
+        assertTrue(source.homeFeed().isEmpty())
+    }
+
     private fun empty() = SearchResults(topTrack = null, songs = emptyList())
 
     private fun library(result: SourceLibrary) = object : SourceLibraryProvider {
         override suspend fun loadLibrary(): SourceLibrary = result
+    }
+
+    private fun home(result: List<com.luc4n3x.levyra.domain.HomeSection>) = object : SourceHomeProvider {
+        override suspend fun loadHomeSections(): List<com.luc4n3x.levyra.domain.HomeSection> = result
     }
 
     private fun catalog(onSearch: suspend (String, String) -> SearchResults) =

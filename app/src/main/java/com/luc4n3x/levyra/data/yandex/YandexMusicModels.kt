@@ -40,3 +40,24 @@ data class YandexPlaylist(
     val trackCount: Int,
     val coverUrl: String
 )
+
+/**
+ * A reference to a playlist on the Yandex landing feed. [uid] is the owner id (the signed-in user
+ * for personal playlists, an editor for public ones) and is combined with [kind] to fetch tracks.
+ */
+data class YandexPlaylistRef(
+    val uid: String,
+    val kind: String,
+    val title: String
+)
+
+/**
+ * The parsed Yandex home feed (`/landing3`). Blocks we can express as track shelves: [chart] holds
+ * ready tracks; [personalPlaylists] and [newPlaylists] are references whose tracks are fetched on
+ * demand. Album "new releases" are intentionally left out until an album-tracks endpoint is added.
+ */
+data class YandexLanding(
+    val chart: List<YandexTrack> = emptyList(),
+    val personalPlaylists: List<YandexPlaylistRef> = emptyList(),
+    val newPlaylists: List<YandexPlaylistRef> = emptyList()
+)

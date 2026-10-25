@@ -22,7 +22,8 @@ internal class YandexMusicAudioProvider(
     private val client: YandexMusicClient,
     private val sessionStore: YandexMusicSessionStore
 ) : HighQualityAudioProvider, LevyraCatalogProvider, LevyraPlaybackProvider,
-    com.luc4n3x.levyra.feature.source.SourceLibraryProvider {
+    com.luc4n3x.levyra.feature.source.SourceLibraryProvider,
+    com.luc4n3x.levyra.feature.source.SourceHomeProvider {
 
     override val id: String = PROVIDER_ID
     override val displayName: String = "Яндекс Музыка"
@@ -131,6 +132,23 @@ internal class YandexMusicAudioProvider(
             )
         }
         return com.luc4n3x.levyra.feature.source.SourceLibrary(favorites = favorites, playlists = playlists)
+    }
+
+    override suspend fun loadHomeSections(): List<com.luc4n3x.levyra.domain.HomeSection> {
+        val currentToken = token ?: return emptyList()
+        val landing = client.landing(currentToken)
+        val sections = mutableListOf<com.luc4n3x.levyra.domain.HomeSection>()
+        if (landing.chart.isNotEmpty()) {
+            sections.add(com.luc4n3x.levyra.domain.HomeSection("Чарт", landing.chart.map(::toDomainTrack)))
+        }
+        // Personal + new editorial playlists become one track shelf each (titles from the feed).
+        (landing.personalPlaylists + landing.newPlaylists).forEach { ref ->
+            val tracks = client.playlistTracks(ref.uid, ref.kind, currentToken).map(::toDomainTrack)
+            if (tracks.isNotEmpty()) {
+                sections.add(com.luc4n3x.levyra.domain.HomeSection(ref.title, tracks))
+            }
+        }
+        return sections
     }
 
     private fun toDomainTrack(yt: YandexTrack): Track = Track(
