@@ -224,7 +224,30 @@ internal class YandexMusicAudioProvider(
 
     override suspend fun playlist(playlistId: String, languageCode: String, limit: Int): YoutubeMusicPlaylistDetail? = null
 
+    // Resolving a Yandex stream costs two sequential network hops (download-info -> signed XML).
+    // Cache the result per track so re-selecting, swiping back or replaying a recently played track
+    // is instant instead of hitting the network again. URLs are valid ~2h server-side; we expire
+    // ours earlier with a safety margin.
+    private val streamCache = java.util.concurrent.ConcurrentHashMap<String, CachedStream>()
+
     override suspend fun resolve(track: Track, videoMode: Boolean): Track {
+        if (!track.id.startsWith("yandex:") && track.source != "yandex_music") {
+            throw LevyraProviderMissException("Track is not from Yandex Music")
+        }
+        val rawId = track.id.removePrefix("yandex:")
+        val now = System.currentTimeMillis()
+        streamCache[rawId]?.takeIf { it.expiresAtMs > now }?.let { cached ->
+            return track.copy(streamUrl = cached.url)
+        }
+        val url = client.resolveStreamUrl(rawId, token)
+            ?: throw LevyraProviderMissException("Failed to resolve Yandex stream")
+        if (streamCache.size > STREAM_CACHE_LIMIT) streamCache.clear()
+        streamCache[rawId] = CachedStream(url, now + STREAM_CACHE_TTL_MS)
+        return track.copy(streamUrl = url)
+    }
+
+    override suspend fun resolveForOffline(track: Track): Track {
+        // A download keeps the file, so always fetch a fresh URL rather than a cached, soon-to-expire one.
         if (!track.id.startsWith("yandex:") && track.source != "yandex_music") {
             throw LevyraProviderMissException("Track is not from Yandex Music")
         }
@@ -234,11 +257,13 @@ internal class YandexMusicAudioProvider(
         return track.copy(streamUrl = url)
     }
 
-    override suspend fun resolveForOffline(track: Track): Track = resolve(track, false)
+    private class CachedStream(val url: String, val expiresAtMs: Long)
 
     companion object {
         const val PROVIDER_ID = "yandex_music"
         private const val STREAM_TTL_MS = 2 * 60 * 60 * 1000L
+        private const val STREAM_CACHE_TTL_MS = 100 * 60 * 1000L
+        private const val STREAM_CACHE_LIMIT = 256
         private const val MY_WAVE_STATION = "user:onyourwave"
     }
 }
