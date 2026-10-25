@@ -102,7 +102,6 @@ internal class YandexMusicClient(
         }
         throw lastException ?: IOException("Failed to poll Yandex OAuth")
     }
-    }
 
     suspend fun fetchAccount(token: String): YandexAccount = withContext(Dispatchers.IO) {
         val request = Request.Builder()
