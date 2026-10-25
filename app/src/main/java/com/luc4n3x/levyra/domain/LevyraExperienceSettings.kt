@@ -230,7 +230,8 @@ data class LevyraInterfaceSettings(
     val skin: LevyraSkin = LevyraSkin.Default,
     val prism: PrismSettings = PrismSettings(),
     val torque: TorqueSettings = TorqueSettings(),
-    val ivory: IvorySettings = IvorySettings()
+    val ivory: IvorySettings = IvorySettings(),
+    val activeSource: com.luc4n3x.levyra.feature.source.SourceId = com.luc4n3x.levyra.feature.source.SourceId.YOUTUBE
 ) {
     fun normalized(): LevyraInterfaceSettings = copy(
         doubleTapSeekSeconds = doubleTapSeekSeconds.coerceIn(5, 30),
