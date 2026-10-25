@@ -28,3 +28,15 @@ data class YandexDeviceCode(
     val expiresIn: Int = 300,
     val interval: Int = 5
 )
+
+/**
+ * A user playlist as returned by `/users/{uid}/playlists/list`. [kind] is Yandex's per-user
+ * playlist id (a number, kept as a string to match the rest of our id handling); it is combined
+ * with the owner uid to fetch the playlist's tracks on demand.
+ */
+data class YandexPlaylist(
+    val kind: String,
+    val title: String,
+    val trackCount: Int,
+    val coverUrl: String
+)

@@ -124,38 +124,81 @@ internal class YandexMusicClient(
             val list = mutableListOf<YandexTrack>()
             for (i in 0 until results.length()) {
                 val item = results.optJSONObject(i) ?: continue
-                val id = item.optString("id")
-                val title = item.optString("title")
-                val durationMs = item.optLong("durationMs", 0L)
-                val artistsArr = item.optJSONArray("artists") ?: JSONArray()
-                val artists = mutableListOf<String>()
-                for (a in 0 until artistsArr.length()) {
-                    artistsArr.optJSONObject(a)?.optString("name")?.let { artists.add(it) }
-                }
-                val artist = if (artists.isNotEmpty()) artists.joinToString(", ") else "Неизвестный исполнитель"
-
-                val albumsArr = item.optJSONArray("albums") ?: JSONArray()
-                val album = albumsArr.optJSONObject(0)?.optString("title") ?: "Без альбома"
-                val coverUri = item.optString("coverUri").ifBlank {
-                    albumsArr.optJSONObject(0)?.optString("coverUri").orEmpty()
-                }
-                val coverUrl = if (coverUri.isNotBlank()) "https://${coverUri.replace("%%", "400x400")}" else ""
-
-                list.add(
-                    YandexTrack(
-                        id = id,
-                        title = title,
-                        artist = artist,
-                        album = album,
-                        durationMs = durationMs,
-                        coverUrl = coverUrl,
-                        available = item.optBoolean("available", true)
-                    )
-                )
+                parseTrackItem(item)?.let { list.add(it) }
             }
             list
         }
     }
+
+    /**
+     * The user's liked tracks, fully hydrated. `/users/{uid}/likes/tracks` returns ids only, so
+     * the ids are batched through `/tracks` for metadata. Order is preserved. A blank [token] or
+     * [uid] yields an empty list rather than an error, so a signed-out state degrades quietly.
+     */
+    suspend fun likedTracks(uid: String, token: String?): List<YandexTrack> = withContext(Dispatchers.IO) {
+        if (uid.isBlank() || token.isNullOrBlank()) return@withContext emptyList()
+        val ids = authedGet("https://api.music.yandex.net/users/${enc(uid)}/likes/tracks", token)
+            ?.let(::parseLikedTrackIds).orEmpty()
+        if (ids.isEmpty()) return@withContext emptyList()
+        tracksByIds(ids, token)
+    }
+
+    /** Batch-fetch full track metadata for [ids] via POST `/tracks`, chunked to stay within limits. */
+    suspend fun tracksByIds(ids: List<String>, token: String?): List<YandexTrack> = withContext(Dispatchers.IO) {
+        if (ids.isEmpty()) return@withContext emptyList()
+        val byId = mutableMapOf<String, YandexTrack>()
+        for (chunk in ids.chunked(TRACK_BATCH_SIZE)) {
+            val body = FormBody.Builder().add("track-ids", chunk.joinToString(",")).build()
+            val builder = Request.Builder()
+                .url("https://api.music.yandex.net/tracks")
+                .header("User-Agent", "Yandex-Music-API")
+                .post(body)
+            if (!token.isNullOrBlank()) builder.header("Authorization", "OAuth $token")
+            httpClient.newCall(builder.build()).execute().use { response ->
+                if (!response.isSuccessful) return@use
+                parseTrackArray(response.body?.string().orEmpty()).forEach { byId[it.id] = it }
+            }
+        }
+        // Preserve the requested order; drop ids the server did not return (unavailable tracks).
+        ids.mapNotNull { byId[it] }
+    }
+
+    /** The user's own and saved playlists (headers only; tracks are fetched by [playlistTracks]). */
+    suspend fun userPlaylists(uid: String, token: String?): List<YandexPlaylist> = withContext(Dispatchers.IO) {
+        if (uid.isBlank() || token.isNullOrBlank()) return@withContext emptyList()
+        authedGet("https://api.music.yandex.net/users/${enc(uid)}/playlists/list", token)
+            ?.let(::parsePlaylists).orEmpty()
+    }
+
+    /** Tracks of one playlist. Uses the embedded track objects when present, batching any id-only entries. */
+    suspend fun playlistTracks(uid: String, kind: String, token: String?): List<YandexTrack> = withContext(Dispatchers.IO) {
+        if (uid.isBlank() || kind.isBlank() || token.isNullOrBlank()) return@withContext emptyList()
+        val body = authedGet("https://api.music.yandex.net/users/${enc(uid)}/playlists/${enc(kind)}", token)
+            ?: return@withContext emptyList()
+        val parsed = parsePlaylistTracks(body)
+        if (parsed.missingIds.isEmpty()) return@withContext parsed.tracks
+        // Some entries carried only an id; hydrate them and splice back in original position.
+        val hydrated = tracksByIds(parsed.missingIds, token).associateBy { it.id }
+        parsed.ordered.mapNotNull { entry ->
+            when (entry) {
+                is PlaylistEntry.Full -> entry.track
+                is PlaylistEntry.IdOnly -> hydrated[entry.id]
+            }
+        }
+    }
+
+    private fun authedGet(url: String, token: String?): String? {
+        val builder = Request.Builder()
+            .url(url)
+            .header("User-Agent", "Yandex-Music-API")
+            .get()
+        if (!token.isNullOrBlank()) builder.header("Authorization", "OAuth $token")
+        return httpClient.newCall(builder.build()).execute().use { response ->
+            if (!response.isSuccessful) null else response.body?.string()
+        }
+    }
+
+    private fun enc(value: String): String = URLEncoder.encode(value, "UTF-8")
 
     suspend fun resolveStreamUrl(trackId: String, token: String? = null): String? = withContext(Dispatchers.IO) {
         val builder = Request.Builder()
@@ -218,5 +261,119 @@ internal class YandexMusicClient(
         const val CLIENT_ID = "23cabbbdc6cd418abb4b39c32c41195d"
         const val CLIENT_SECRET = "53bc75238f0c4d08a118e51fe9203300"
         const val SIGN_SECRET = "XGRlBW9FXlekgbPrRHuSiA"
+        private const val TRACK_BATCH_SIZE = 150
     }
+}
+
+/**
+ * Map one Yandex track JSON object (shared by search `result.tracks.results[]`, batch `/tracks`
+ * `result[]`, and playlist `result.tracks[].track`) to a [YandexTrack]. Returns null when the
+ * object has no usable id.
+ */
+internal fun parseTrackItem(item: JSONObject): YandexTrack? {
+    val id = item.optString("id").ifBlank { item.optString("realId") }
+    if (id.isBlank()) return null
+    val artistsArr = item.optJSONArray("artists") ?: JSONArray()
+    val artists = buildList {
+        for (a in 0 until artistsArr.length()) {
+            artistsArr.optJSONObject(a)?.optString("name")?.takeIf { it.isNotBlank() }?.let { add(it) }
+        }
+    }
+    val artist = if (artists.isNotEmpty()) artists.joinToString(", ") else "Неизвестный исполнитель"
+    val albumsArr = item.optJSONArray("albums") ?: JSONArray()
+    val album = albumsArr.optJSONObject(0)?.optString("title")?.takeIf { it.isNotBlank() } ?: "Без альбома"
+    val coverUri = item.optString("coverUri").ifBlank {
+        albumsArr.optJSONObject(0)?.optString("coverUri").orEmpty()
+    }
+    val coverUrl = if (coverUri.isNotBlank()) "https://${coverUri.replace("%%", "400x400")}" else ""
+    return YandexTrack(
+        id = id,
+        title = item.optString("title"),
+        artist = artist,
+        album = album,
+        durationMs = item.optLong("durationMs", 0L),
+        coverUrl = coverUrl,
+        available = item.optBoolean("available", true)
+    )
+}
+
+/** Parse the id-only track list from `/users/{uid}/likes/tracks`. */
+internal fun parseLikedTrackIds(body: String): List<String> {
+    val tracks = JSONObject(body)
+        .optJSONObject("result")
+        ?.optJSONObject("library")
+        ?.optJSONArray("tracks")
+        ?: return emptyList()
+    return buildList {
+        for (i in 0 until tracks.length()) {
+            val obj = tracks.optJSONObject(i) ?: continue
+            // Entries are {id, albumId, ...}; the track id alone is enough to batch-hydrate.
+            obj.optString("id").takeIf { it.isNotBlank() }?.let { add(it) }
+        }
+    }
+}
+
+/** Parse a batch `/tracks` response (`result` is a flat array of full track objects). */
+internal fun parseTrackArray(body: String): List<YandexTrack> {
+    val arr = JSONObject(body).optJSONArray("result") ?: return emptyList()
+    return buildList {
+        for (i in 0 until arr.length()) {
+            arr.optJSONObject(i)?.let(::parseTrackItem)?.let { add(it) }
+        }
+    }
+}
+
+/** Parse `/users/{uid}/playlists/list` playlist headers. */
+internal fun parsePlaylists(body: String): List<YandexPlaylist> {
+    val arr = JSONObject(body).optJSONArray("result") ?: return emptyList()
+    return buildList {
+        for (i in 0 until arr.length()) {
+            val item = arr.optJSONObject(i) ?: continue
+            // kind is numeric in the API; keep it as a string to match our id handling.
+            val kind = if (item.has("kind")) item.get("kind").toString() else ""
+            if (kind.isBlank()) continue
+            val coverUri = item.optJSONObject("cover")?.optString("uri").orEmpty()
+            add(
+                YandexPlaylist(
+                    kind = kind,
+                    title = item.optString("title").ifBlank { "Плейлист" },
+                    trackCount = item.optInt("trackCount", 0),
+                    coverUrl = if (coverUri.isNotBlank()) "https://${coverUri.replace("%%", "400x400")}" else ""
+                )
+            )
+        }
+    }
+}
+
+/** One entry of a playlist's track list: either a fully embedded track or just an id to hydrate. */
+internal sealed interface PlaylistEntry {
+    data class Full(val track: YandexTrack) : PlaylistEntry
+    data class IdOnly(val id: String) : PlaylistEntry
+}
+
+internal data class ParsedPlaylistTracks(val ordered: List<PlaylistEntry>) {
+    val tracks: List<YandexTrack> get() = ordered.filterIsInstance<PlaylistEntry.Full>().map { it.track }
+    val missingIds: List<String> get() = ordered.filterIsInstance<PlaylistEntry.IdOnly>().map { it.id }
+}
+
+/**
+ * Parse `/users/{uid}/playlists/{kind}` into ordered entries. Each `result.tracks[]` element holds
+ * either an embedded `track` object or, for lazily-loaded playlists, only a numeric `id`.
+ */
+internal fun parsePlaylistTracks(body: String): ParsedPlaylistTracks {
+    val arr = JSONObject(body).optJSONObject("result")?.optJSONArray("tracks")
+        ?: return ParsedPlaylistTracks(emptyList())
+    val ordered = buildList {
+        for (i in 0 until arr.length()) {
+            val entry = arr.optJSONObject(i) ?: continue
+            val embedded = entry.optJSONObject("track")
+            if (embedded != null) {
+                parseTrackItem(embedded)?.let { add(PlaylistEntry.Full(it)) }
+            } else {
+                val id = if (entry.has("id")) entry.get("id").toString() else entry.optString("trackId")
+                id.takeIf { it.isNotBlank() }?.let { add(PlaylistEntry.IdOnly(it)) }
+            }
+        }
+    }
+    return ParsedPlaylistTracks(ordered)
 }

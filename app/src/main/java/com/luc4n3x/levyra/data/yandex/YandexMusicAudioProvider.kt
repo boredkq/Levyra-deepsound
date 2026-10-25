@@ -21,7 +21,8 @@ import com.luc4n3x.levyra.feature.providers.LevyraProviderMissException
 internal class YandexMusicAudioProvider(
     private val client: YandexMusicClient,
     private val sessionStore: YandexMusicSessionStore
-) : HighQualityAudioProvider, LevyraCatalogProvider, LevyraPlaybackProvider {
+) : HighQualityAudioProvider, LevyraCatalogProvider, LevyraPlaybackProvider,
+    com.luc4n3x.levyra.feature.source.SourceLibraryProvider {
 
     override val id: String = PROVIDER_ID
     override val displayName: String = "Яндекс Музыка"
@@ -108,30 +109,49 @@ internal class YandexMusicAudioProvider(
     }
 
     override suspend fun searchEverything(query: String, languageCode: String): SearchResults {
-        val tracks = client.search(query, token)
-        val songs = tracks.map { yt ->
-            Track(
-                id = "yandex:${yt.id}",
-                title = yt.title,
-                artist = yt.artist,
-                album = yt.album,
-                durationMs = yt.durationMs,
-                streamUrl = "",
-                videoUrl = "",
-                thumbnailUrl = yt.coverUrl,
-                largeThumbnailUrl = yt.coverUrl,
-                source = "yandex_music",
-                moodTags = emptySet(),
-                energy = 50,
-                vocal = 50,
-                replayScore = 0,
-                cacheScore = 0,
-                accentStart = 0,
-                accentEnd = 0
-            )
-        }
+        val songs = client.search(query, token).map(::toDomainTrack)
         return SearchResults(topTrack = songs.firstOrNull(), songs = songs)
     }
+
+    override suspend fun loadLibrary(): com.luc4n3x.levyra.feature.source.SourceLibrary {
+        val currentToken = token ?: return com.luc4n3x.levyra.feature.source.SourceLibrary()
+        val uid = sessionStore.loadAccount()?.uid.orEmpty()
+        if (uid.isBlank()) return com.luc4n3x.levyra.feature.source.SourceLibrary()
+
+        val favorites = client.likedTracks(uid, currentToken).map(::toDomainTrack)
+        val playlists = client.userPlaylists(uid, currentToken).map { yp ->
+            val tracks = client.playlistTracks(uid, yp.kind, currentToken).map(::toDomainTrack)
+            com.luc4n3x.levyra.domain.Playlist(
+                id = "yandex:playlist:${yp.kind}",
+                name = yp.title,
+                coverUrl = yp.coverUrl,
+                tracks = tracks,
+                createdAt = 0L,
+                updatedAt = 0L
+            )
+        }
+        return com.luc4n3x.levyra.feature.source.SourceLibrary(favorites = favorites, playlists = playlists)
+    }
+
+    private fun toDomainTrack(yt: YandexTrack): Track = Track(
+        id = "yandex:${yt.id}",
+        title = yt.title,
+        artist = yt.artist,
+        album = yt.album,
+        durationMs = yt.durationMs,
+        streamUrl = "",
+        videoUrl = "",
+        thumbnailUrl = yt.coverUrl,
+        largeThumbnailUrl = yt.coverUrl,
+        source = PROVIDER_ID,
+        moodTags = emptySet(),
+        energy = 50,
+        vocal = 50,
+        replayScore = 0,
+        cacheScore = 0,
+        accentStart = 0,
+        accentEnd = 0
+    )
 
     override suspend fun albumDetail(album: AlbumHit, languageCode: String): AlbumDetail? = null
 
