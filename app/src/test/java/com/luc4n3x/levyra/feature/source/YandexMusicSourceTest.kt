@@ -109,6 +109,41 @@ class YandexMusicSourceTest {
         assertTrue(source.homeFeed().isEmpty())
     }
 
+    @Test
+    fun capabilities_offersRadio_withRadioProvider() {
+        val source = YandexMusicSource(
+            catalog { _, _ -> empty() },
+            playback(),
+            radioProvider = radio(emptyList())
+        )
+        assertEquals(setOf(SourceCapability.RADIO), source.capabilities())
+    }
+
+    @Test
+    fun radio_delegatesToProvider_passingArgs() = runBlocking {
+        val expected = listOf(track(id = "yandex:9", source = "yandex_music"))
+        var seenSeed: String? = "unset"
+        var seenExclude: Set<String> = emptySet()
+        var seenLimit = -1
+        val provider = object : SourceRadioProvider {
+            override suspend fun radioTracks(seedTrackId: String?, excludeIds: Set<String>, limit: Int): List<Track> {
+                seenSeed = seedTrackId; seenExclude = excludeIds; seenLimit = limit
+                return expected
+            }
+        }
+        val source = YandexMusicSource(catalog { _, _ -> empty() }, playback(), radioProvider = provider)
+        assertSame(expected, source.radio(seedTrackId = "42", excludeIds = setOf("a"), limit = 7))
+        assertEquals("42", seenSeed)
+        assertEquals(setOf("a"), seenExclude)
+        assertEquals(7, seenLimit)
+    }
+
+    @Test
+    fun radio_defaultsToEmpty_withoutProvider() = runBlocking {
+        val source = YandexMusicSource(catalog { _, _ -> empty() }, playback())
+        assertTrue(source.radio(seedTrackId = null, excludeIds = emptySet(), limit = 5).isEmpty())
+    }
+
     private fun empty() = SearchResults(topTrack = null, songs = emptyList())
 
     private fun library(result: SourceLibrary) = object : SourceLibraryProvider {
@@ -117,6 +152,10 @@ class YandexMusicSourceTest {
 
     private fun home(result: List<com.luc4n3x.levyra.domain.HomeSection>) = object : SourceHomeProvider {
         override suspend fun loadHomeSections(): List<com.luc4n3x.levyra.domain.HomeSection> = result
+    }
+
+    private fun radio(result: List<Track>) = object : SourceRadioProvider {
+        override suspend fun radioTracks(seedTrackId: String?, excludeIds: Set<String>, limit: Int): List<Track> = result
     }
 
     private fun catalog(onSearch: suspend (String, String) -> SearchResults) =

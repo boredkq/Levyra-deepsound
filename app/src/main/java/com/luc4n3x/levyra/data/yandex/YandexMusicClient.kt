@@ -187,6 +187,22 @@ internal class YandexMusicClient(
         }
     }
 
+    /**
+     * A batch of tracks from a rotor station (e.g. "user:onyourwave" — «Моя волна»). [queue] is the
+     * id of the last track already played; passing it asks rotor for the continuation, which backs
+     * the endless autoplay wave. Returns empty when signed out.
+     */
+    suspend fun rotorStationTracks(
+        stationId: String,
+        token: String?,
+        queue: String? = null
+    ): List<YandexTrack> = withContext(Dispatchers.IO) {
+        if (token.isNullOrBlank()) return@withContext emptyList()
+        val base = "https://api.music.yandex.net/rotor/station/${enc(stationId)}/tracks?settings2=true"
+        val url = if (!queue.isNullOrBlank()) "$base&queue=${enc(queue)}" else base
+        authedGet(url, token)?.let(::parseRotorSequence).orEmpty()
+    }
+
     /** The personalized home feed (`/landing3`). Returns an empty landing when signed out. */
     suspend fun landing(token: String?): YandexLanding = withContext(Dispatchers.IO) {
         if (token.isNullOrBlank()) return@withContext YandexLanding()
@@ -390,6 +406,18 @@ private fun playlistRef(obj: JSONObject?): YandexPlaylistRef? {
     val kind = if (obj.has("kind")) obj.get("kind").toString() else ""
     if (uid.isBlank() || kind.isBlank()) return null
     return YandexPlaylistRef(uid = uid, kind = kind, title = obj.optString("title").ifBlank { "Плейлист" })
+}
+
+/** Parse a rotor tracks response (`result.sequence[].track`) into tracks, in order. */
+internal fun parseRotorSequence(body: String): List<YandexTrack> {
+    val sequence = JSONObject(body).optJSONObject("result")?.optJSONArray("sequence")
+        ?: return emptyList()
+    return buildList {
+        for (i in 0 until sequence.length()) {
+            val track = sequence.optJSONObject(i)?.optJSONObject("track")
+            track?.let(::parseTrackItem)?.let(::add)
+        }
+    }
 }
 
 /** One entry of a playlist's track list: either a fully embedded track or just an id to hydrate. */

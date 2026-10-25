@@ -12862,13 +12862,27 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
 
     private suspend fun fetchRadioTracks(request: RadioTailRequest, fetchLimit: Int): List<Track> =
         try {
-            repository.radio(
-                seed = request.seed,
-                languageCode = _state.value.languageCode,
-                limit = fetchLimit,
-                excludeIds = request.session?.addedIds.orEmpty(),
-                diversify = true
-            )
+            if (_state.value.interfaceSettings.activeSource ==
+                com.luc4n3x.levyra.feature.source.SourceId.YANDEX
+            ) {
+                // Yandex autoplay = «Моя волна» rotor; the seed advances the rotor queue.
+                val seedId = request.seed.id
+                    .takeIf { it.startsWith("yandex:") || request.seed.source == "yandex_music" }
+                    ?.removePrefix("yandex:")
+                yandexMusicProvider.radioTracks(
+                    seedTrackId = seedId,
+                    excludeIds = request.session?.addedIds.orEmpty(),
+                    limit = fetchLimit
+                )
+            } else {
+                repository.radio(
+                    seed = request.seed,
+                    languageCode = _state.value.languageCode,
+                    limit = fetchLimit,
+                    excludeIds = request.session?.addedIds.orEmpty(),
+                    diversify = true
+                )
+            }
         } catch (cancelled: CancellationException) {
             throw cancelled
         } catch (_: Exception) {
