@@ -652,7 +652,10 @@ data class Playlist(
     val updatedAt: Long,
     val tags: List<PlaylistTag> = emptyList(),
     val hidden: Boolean = false,
-    val coverMode: PlaylistCoverMode = PlaylistCoverMode.AUTO
+    val coverMode: PlaylistCoverMode = PlaylistCoverMode.AUTO,
+    // For playlists whose tracks are loaded lazily (e.g. a Yandex playlist shown in the library
+    // before it is opened): the known track count from the source. -1 means "use tracks.size".
+    val remoteTrackCount: Int = -1
 ) {
-    val size: Int get() = tracks.size
+    val size: Int get() = if (remoteTrackCount >= 0) remoteTrackCount else tracks.size
 }

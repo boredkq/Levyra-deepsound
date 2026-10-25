@@ -17,6 +17,7 @@ import com.luc4n3x.levyra.domain.Track
 import com.luc4n3x.levyra.feature.providers.LevyraCatalogProvider
 import com.luc4n3x.levyra.feature.providers.LevyraPlaybackProvider
 import com.luc4n3x.levyra.feature.providers.LevyraProviderMissException
+import kotlinx.coroutines.withContext
 
 internal class YandexMusicAudioProvider(
     private val client: YandexMusicClient,
@@ -119,19 +120,37 @@ internal class YandexMusicAudioProvider(
         val uid = sessionStore.loadAccount()?.uid.orEmpty()
         if (uid.isBlank()) return com.luc4n3x.levyra.feature.source.SourceLibrary()
 
-        val favorites = client.likedTracks(uid, currentToken).map(::toDomainTrack)
-        val playlists = client.userPlaylists(uid, currentToken).map { yp ->
-            val tracks = client.playlistTracks(uid, yp.kind, currentToken).map(::toDomainTrack)
-            com.luc4n3x.levyra.domain.Playlist(
-                id = "yandex:playlist:${yp.kind}",
-                name = yp.title,
-                coverUrl = yp.coverUrl,
-                tracks = tracks,
-                createdAt = 0L,
-                updatedAt = 0L
+        // Fetch (network, on IO inside the client) the likes and the playlist headers only. Playlist
+        // tracks are loaded lazily by [loadPlaylistTracks] when a playlist is opened, so a large
+        // library (thousands of likes, many playlists) does not stall the Library tab on connect.
+        val likes = client.likedTracks(uid, currentToken)
+        val playlistHeaders = client.userPlaylists(uid, currentToken)
+        return withContext(kotlinx.coroutines.Dispatchers.Default) {
+            com.luc4n3x.levyra.feature.source.SourceLibrary(
+                favorites = likes.map(::toDomainTrack),
+                playlists = playlistHeaders.map { yp ->
+                    com.luc4n3x.levyra.domain.Playlist(
+                        id = "yandex:playlist:${yp.kind}",
+                        name = yp.title,
+                        coverUrl = yp.coverUrl,
+                        tracks = emptyList(),
+                        createdAt = 0L,
+                        updatedAt = 0L,
+                        remoteTrackCount = yp.trackCount
+                    )
+                }
             )
         }
-        return com.luc4n3x.levyra.feature.source.SourceLibrary(favorites = favorites, playlists = playlists)
+    }
+
+    /** Lazily load the tracks of a Yandex playlist (id "yandex:playlist:<kind>") shown in the library. */
+    suspend fun loadPlaylistTracks(playlistId: String): List<Track> {
+        val currentToken = token ?: return emptyList()
+        val uid = sessionStore.loadAccount()?.uid.orEmpty()
+        val kind = playlistId.removePrefix("yandex:playlist:")
+        if (uid.isBlank() || kind.isBlank() || kind == playlistId) return emptyList()
+        val tracks = client.playlistTracks(uid, kind, currentToken)
+        return withContext(kotlinx.coroutines.Dispatchers.Default) { tracks.map(::toDomainTrack) }
     }
 
     override suspend fun loadHomeSections(): List<com.luc4n3x.levyra.domain.HomeSection> {
@@ -139,11 +158,13 @@ internal class YandexMusicAudioProvider(
         val landing = client.landing(currentToken)
         val sections = mutableListOf<com.luc4n3x.levyra.domain.HomeSection>()
         if (landing.chart.isNotEmpty()) {
-            sections.add(com.luc4n3x.levyra.domain.HomeSection("Чарт", landing.chart.map(::toDomainTrack)))
+            val chart = withContext(kotlinx.coroutines.Dispatchers.Default) { landing.chart.map(::toDomainTrack) }
+            sections.add(com.luc4n3x.levyra.domain.HomeSection("Чарт", chart))
         }
         // Personal + new editorial playlists become one track shelf each (titles from the feed).
         (landing.personalPlaylists + landing.newPlaylists).forEach { ref ->
-            val tracks = client.playlistTracks(ref.uid, ref.kind, currentToken).map(::toDomainTrack)
+            val raw = client.playlistTracks(ref.uid, ref.kind, currentToken)
+            val tracks = withContext(kotlinx.coroutines.Dispatchers.Default) { raw.map(::toDomainTrack) }
             if (tracks.isNotEmpty()) {
                 sections.add(com.luc4n3x.levyra.domain.HomeSection(ref.title, tracks))
             }

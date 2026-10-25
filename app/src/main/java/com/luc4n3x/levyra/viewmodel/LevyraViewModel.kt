@@ -3959,11 +3959,24 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     fun openPlaylist(playlistId: String) {
         playerReturnDetail = null
         viewModelScope.launch {
-            // Prefer the in-memory playlist (local or, under a non-YouTube source, the active
-            // source's playlist) and fall back to the local store for ids not held in state.
-            val pl = _state.value.playlists.firstOrNull { it.id == playlistId }
-                ?: playlistStore.load(playlistId)
-            _state.update { it.copy(openPlaylist = pl) }
+            _state.update { it.copy(openPlaylist = resolveLibraryPlaylist(playlistId)) }
+        }
+    }
+
+    /**
+     * Resolve a playlist for opening/playing. Local playlists come from the store; a Yandex library
+     * playlist is held in state as a header and has its tracks fetched lazily here, on demand.
+     */
+    private suspend fun resolveLibraryPlaylist(playlistId: String): com.luc4n3x.levyra.domain.Playlist? {
+        val inState = _state.value.playlists.firstOrNull { it.id == playlistId }
+        return when {
+            inState != null && playlistId.startsWith("yandex:playlist:") && inState.tracks.isEmpty() -> {
+                val tracks = runCatching { yandexMusicProvider.loadPlaylistTracks(playlistId) }
+                    .getOrDefault(emptyList())
+                inState.copy(tracks = tracks)
+            }
+            inState != null -> inState
+            else -> playlistStore.load(playlistId)
         }
     }
 
@@ -4015,7 +4028,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
 
     fun playPlaylist(playlistId: String, startTrackId: String? = null) {
         viewModelScope.launch {
-            val pl = playlistStore.load(playlistId) ?: return@launch
+            val pl = resolveLibraryPlaylist(playlistId) ?: return@launch
             if (pl.tracks.isEmpty()) return@launch
             val start = startTrackId?.let { id -> pl.tracks.firstOrNull { it.id == id } } ?: pl.tracks.first()
             playFrom(pl.tracks, start, loopOnCompletion = true)
