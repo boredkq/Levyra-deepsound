@@ -1,5 +1,7 @@
 package com.luc4n3x.levyra.feature.source
 
+import com.luc4n3x.levyra.domain.Track
+
 /**
  * Identifies a top-level music source the user can switch between (see the Yandex
  * source integration design, §2). Persisted by [name] in preferences and parsed back
@@ -17,4 +19,11 @@ enum class SourceId(val label: String) {
         fun from(value: String?): SourceId =
             entries.firstOrNull { it.name.equals(value, ignoreCase = true) } ?: YOUTUBE
     }
+}
+
+/** Resolves the authoritative [SourceId] this track belongs to. */
+fun Track.sourceId(): SourceId = when {
+    id.startsWith("yandex:") || source.equals("yandex_music", ignoreCase = true) || source.equals("yandex", ignoreCase = true) -> SourceId.YANDEX
+    id.startsWith("soundcloud:") || source.equals("soundcloud", ignoreCase = true) -> SourceId.SOUNDCLOUD
+    else -> SourceId.YOUTUBE
 }

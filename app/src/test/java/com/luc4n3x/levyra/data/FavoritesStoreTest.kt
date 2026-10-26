@@ -1,6 +1,8 @@
 package com.luc4n3x.levyra.data
 
 import com.luc4n3x.levyra.domain.Track
+import com.luc4n3x.levyra.feature.source.SourceId
+import com.luc4n3x.levyra.feature.source.sourceId
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertSame
@@ -84,11 +86,27 @@ class FavoritesStoreTest {
         assertFalse(membership.sameTracksAs(listOf(byId)))
     }
 
+    @Test
+    fun trackSourceIdResolvesCorrectSource() {
+        val yt = track("yt123", "YouTube Song", source = "youtube")
+        val yandexById = track("yandex:98765", "Yandex Song", source = "")
+        val yandexBySource = track("98765", "Yandex Song", source = "yandex_music")
+        val soundCloudById = track("soundcloud:12345", "SoundCloud Track", source = "")
+        val soundCloudBySource = track("12345", "SoundCloud Track", source = "soundcloud")
+
+        assertEquals(SourceId.YOUTUBE, yt.sourceId())
+        assertEquals(SourceId.YANDEX, yandexById.sourceId())
+        assertEquals(SourceId.YANDEX, yandexBySource.sourceId())
+        assertEquals(SourceId.SOUNDCLOUD, soundCloudById.sourceId())
+        assertEquals(SourceId.SOUNDCLOUD, soundCloudBySource.sourceId())
+    }
+
     private fun track(
         id: String,
         title: String,
         artist: String = "Artist",
-        album: String = "Album"
+        album: String = "Album",
+        source: String = "test"
     ) = Track(
         id = id,
         title = title,
@@ -99,7 +117,7 @@ class FavoritesStoreTest {
         videoUrl = "",
         thumbnailUrl = "",
         largeThumbnailUrl = "",
-        source = "test",
+        source = source,
         moodTags = emptySet(),
         energy = 0,
         vocal = 0,

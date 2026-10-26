@@ -13,5 +13,5 @@ interface SourceRadioProvider {
      * (used to advance the rotor queue; may be null for a cold start). [excludeIds] are domain ids
      * already queued, to avoid repeats. Returns at most [limit] tracks.
      */
-    suspend fun radioTracks(seedTrackId: String?, excludeIds: Set<String>, limit: Int): List<Track>
+    suspend fun radioTracks(seedTrackId: String?, excludeIds: Set<String> = emptySet(), limit: Int = 20): List<Track>
 }

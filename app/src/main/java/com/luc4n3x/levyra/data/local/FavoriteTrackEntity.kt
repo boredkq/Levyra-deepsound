@@ -3,6 +3,7 @@ package com.luc4n3x.levyra.data.local
 import androidx.room.Entity
 import androidx.room.PrimaryKey
 import com.luc4n3x.levyra.domain.Track
+import com.luc4n3x.levyra.feature.source.SourceId
 
 @Entity(tableName = "favorite_tracks")
 data class FavoriteTrackEntity(
@@ -45,8 +46,15 @@ data class FavoriteTrackEntity(
 data class FavoriteTrackIdentity(
     val id: String,
     val title: String,
-    val artist: String
+    val artist: String,
+    val source: String = ""
 )
+
+fun FavoriteTrackEntity.sourceId(): SourceId = when {
+    id.startsWith("yandex:") || source.equals("yandex_music", ignoreCase = true) || source.equals("yandex", ignoreCase = true) -> SourceId.YANDEX
+    id.startsWith("soundcloud:") || source.equals("soundcloud", ignoreCase = true) -> SourceId.SOUNDCLOUD
+    else -> SourceId.YOUTUBE
+}
 
 fun FavoriteTrackEntity.toTrack(): Track = Track(
     id = id,

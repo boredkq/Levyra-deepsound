@@ -14,6 +14,7 @@ import kotlinx.coroutines.withContext
 import okhttp3.FormBody
 import okhttp3.OkHttpClient
 import okhttp3.Request
+import okhttp3.RequestBody
 import org.json.JSONArray
 import org.json.JSONObject
 
@@ -176,6 +177,22 @@ internal class YandexMusicClient(
         tracksByIds(ids, token)
     }
 
+    /** Add a track to user's likes on Yandex Music servers. */
+    suspend fun likeTrack(uid: String, trackId: String, token: String?): Boolean = withContext(Dispatchers.IO) {
+        if (uid.isBlank() || token.isNullOrBlank() || trackId.isBlank()) return@withContext false
+        val body = FormBody.Builder().add("track-ids", trackId).build()
+        val url = "https://api.music.yandex.net/users/${enc(uid)}/likes/tracks/add-multiple"
+        authedPost(url, body, token) != null
+    }
+
+    /** Remove a track from user's likes on Yandex Music servers. */
+    suspend fun unlikeTrack(uid: String, trackId: String, token: String?): Boolean = withContext(Dispatchers.IO) {
+        if (uid.isBlank() || token.isNullOrBlank() || trackId.isBlank()) return@withContext false
+        val body = FormBody.Builder().add("track-ids", trackId).build()
+        val url = "https://api.music.yandex.net/users/${enc(uid)}/likes/tracks/remove"
+        authedPost(url, body, token) != null
+    }
+
     /** Batch-fetch full track metadata for [ids] via POST `/tracks`, chunked and fetched in parallel. */
     suspend fun tracksByIds(ids: List<String>, token: String?): List<YandexTrack> = withContext(Dispatchers.IO) {
         if (ids.isEmpty()) return@withContext emptyList()
@@ -252,6 +269,17 @@ internal class YandexMusicClient(
             .url(url)
             .header("User-Agent", "Yandex-Music-API")
             .get()
+        if (!token.isNullOrBlank()) builder.header("Authorization", "OAuth $token")
+        return httpClient.newCall(builder.build()).execute().use { response ->
+            if (!response.isSuccessful) null else response.body?.string()
+        }
+    }
+
+    private fun authedPost(url: String, body: RequestBody, token: String?): String? {
+        val builder = Request.Builder()
+            .url(url)
+            .header("User-Agent", "Yandex-Music-API")
+            .post(body)
         if (!token.isNullOrBlank()) builder.header("Authorization", "OAuth $token")
         return httpClient.newCall(builder.build()).execute().use { response ->
             if (!response.isSuccessful) null else response.body?.string()

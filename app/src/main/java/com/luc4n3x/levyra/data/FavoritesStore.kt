@@ -1,10 +1,14 @@
 package com.luc4n3x.levyra.data
 
 import android.content.Context
+import com.luc4n3x.levyra.data.local.FavoriteTrackEntity
 import com.luc4n3x.levyra.data.local.LevyraDatabase
+import com.luc4n3x.levyra.data.local.sourceId
 import com.luc4n3x.levyra.data.local.toFavoriteTrackEntity
 import com.luc4n3x.levyra.data.local.toTrack
 import com.luc4n3x.levyra.domain.Track
+import com.luc4n3x.levyra.feature.source.SourceId
+import com.luc4n3x.levyra.feature.source.sourceId
 import java.util.Locale
 import java.util.concurrent.atomic.AtomicLong
 import kotlinx.coroutines.Dispatchers
@@ -37,103 +41,151 @@ class FavoritesStore(context: Context) {
     private val legacyPrefs = appContext.getSharedPreferences("levyra_favorites", Context.MODE_PRIVATE)
     private var timestampSnapshot: FavoriteTimestampSnapshot? = null
 
-    fun load(): List<Track> = runBlocking(Dispatchers.IO) {
-        favoritesStoreMutationMutex.withLock { loadInternal() }
+    fun load(source: SourceId = SourceId.YOUTUBE): List<Track> = runBlocking(Dispatchers.IO) {
+        favoritesStoreMutationMutex.withLock { loadInternal(source) }
     }
 
-    fun loadTimestamps(): Map<String, Long> = runBlocking(Dispatchers.IO) {
-        favoritesStoreMutationMutex.withLock { loadTimestampsInternal() }
+    fun loadTimestamps(source: SourceId = SourceId.YOUTUBE): Map<String, Long> = runBlocking(Dispatchers.IO) {
+        favoritesStoreMutationMutex.withLock { loadTimestampsInternal(source) }
     }
 
-    suspend fun loadTimestampsSuspending(): Map<String, Long> = withContext(Dispatchers.IO) {
-        favoritesStoreMutationMutex.withLock { loadTimestampsInternal() }
+    suspend fun loadTimestampsSuspending(source: SourceId = SourceId.YOUTUBE): Map<String, Long> = withContext(Dispatchers.IO) {
+        favoritesStoreMutationMutex.withLock { loadTimestampsInternal(source) }
     }
 
     fun save(tracks: List<Track>) {
         runBlocking(Dispatchers.IO) {
-            favoritesStoreMutationMutex.withLock { saveAndCompleteMigration(tracks) }
+            favoritesStoreMutationMutex.withLock {
+                val source = tracks.firstOrNull()?.sourceId() ?: SourceId.YOUTUBE
+                saveForSourceInternal(source, tracks)
+            }
         }
     }
 
     suspend fun saveSuspending(tracks: List<Track>) = withContext(Dispatchers.IO) {
-        favoritesStoreMutationMutex.withLock { saveAndCompleteMigration(tracks) }
+        favoritesStoreMutationMutex.withLock {
+            val source = tracks.firstOrNull()?.sourceId() ?: SourceId.YOUTUBE
+            saveForSourceInternal(source, tracks)
+        }
+    }
+
+    fun saveForSource(source: SourceId, tracks: List<Track>) {
+        runBlocking(Dispatchers.IO) {
+            favoritesStoreMutationMutex.withLock { saveForSourceInternal(source, tracks) }
+        }
+    }
+
+    suspend fun saveForSourceSuspending(source: SourceId, tracks: List<Track>) = withContext(Dispatchers.IO) {
+        favoritesStoreMutationMutex.withLock { saveForSourceInternal(source, tracks) }
     }
 
     suspend fun addFavorites(tracks: List<Track>): List<Track> = withContext(Dispatchers.IO) {
         favoritesStoreMutationMutex.withLock {
-            val current = loadInternal(failOnReadError = true)
+            if (tracks.isEmpty()) return@withContext emptyList()
+            val targetSource = tracks.first().sourceId()
+            val current = loadInternal(targetSource, failOnReadError = true)
             val existingKeys = current.mapTo(hashSetOf(), ::favoriteTrackKey)
             val added = tracks.filter { it.id.isNotBlank() && existingKeys.add(favoriteTrackKey(it)) }
             val updated = added + current
-            if (added.isNotEmpty()) saveAndCompleteMigration(updated)
+            if (added.isNotEmpty()) saveForSourceInternal(targetSource, updated)
             updated
         }
     }
 
     suspend fun toggleFavorite(track: Track): List<Track> = withContext(Dispatchers.IO) {
         favoritesStoreMutationMutex.withLock {
-            val current = loadInternal()
+            val targetSource = track.sourceId()
+            val current = loadInternal(targetSource)
             val targetKey = favoriteTrackKey(track)
             val existingIndex = current.indexOfFirst { favorite ->
                 favoriteTrackKey(favorite) == targetKey
             }
+            val normalizedTrack = if (track.source.isBlank()) {
+                when (targetSource) {
+                    SourceId.YANDEX -> track.copy(source = "yandex_music")
+                    SourceId.SOUNDCLOUD -> track.copy(source = "soundcloud")
+                    SourceId.YOUTUBE -> track.copy(source = "youtube")
+                }
+            } else track
+
             val updated = if (existingIndex >= 0) {
                 current.filterIndexed { index, _ -> index != existingIndex }
             } else {
-                listOf(track) + current
+                listOf(normalizedTrack) + current
             }
-            saveAndCompleteMigration(updated)
+            saveForSourceInternal(targetSource, updated)
             updated
         }
     }
 
     suspend fun setFavorite(track: Track, favorite: Boolean): List<Track> = withContext(Dispatchers.IO) {
         favoritesStoreMutationMutex.withLock {
-            val current = loadInternal(failOnReadError = true)
-            val updated = favoriteTracksWithMembership(current, track, favorite)
-            if (updated != current) saveAndCompleteMigration(updated)
+            val targetSource = track.sourceId()
+            val current = loadInternal(targetSource, failOnReadError = true)
+            val normalizedTrack = if (track.source.isBlank()) {
+                when (targetSource) {
+                    SourceId.YANDEX -> track.copy(source = "yandex_music")
+                    SourceId.SOUNDCLOUD -> track.copy(source = "soundcloud")
+                    SourceId.YOUTUBE -> track.copy(source = "youtube")
+                }
+            } else track
+            val updated = favoriteTracksWithMembership(current, normalizedTrack, favorite)
+            if (updated != current) saveForSourceInternal(targetSource, updated)
             updated
         }
     }
 
-    internal fun observeMembership(): Flow<FavoriteMembership> = dao.observeIdentities()
-        .onStart { favoritesStoreMutationMutex.withLock { loadInternal() } }
-        .map { rows -> FavoriteMembership(rows.mapTo(hashSetOf()) { favoriteTrackKey(it.id, it.artist, it.title) }) }
+    internal fun observeMembership(source: SourceId? = null): Flow<FavoriteMembership> = dao.observeIdentities()
+        .onStart { favoritesStoreMutationMutex.withLock { loadInternal(source ?: SourceId.YOUTUBE) } }
+        .map { rows ->
+            val matching = if (source != null) {
+                rows.filter { row ->
+                    when (source) {
+                        SourceId.YANDEX -> row.id.startsWith("yandex:") || row.source.equals("yandex_music", ignoreCase = true)
+                        SourceId.SOUNDCLOUD -> row.id.startsWith("soundcloud:") || row.source.equals("soundcloud", ignoreCase = true)
+                        SourceId.YOUTUBE -> !row.id.startsWith("yandex:") && !row.id.startsWith("soundcloud:") &&
+                            !row.source.equals("yandex_music", ignoreCase = true) && !row.source.equals("soundcloud", ignoreCase = true)
+                    }
+                }
+            } else {
+                rows
+            }
+            FavoriteMembership(matching.mapTo(hashSetOf()) { favoriteTrackKey(it.id, it.artist, it.title) })
+        }
         .flowOn(Dispatchers.IO)
 
-    suspend fun toggleFavorites(tracks: List<Track>): List<Track> = withContext(Dispatchers.IO) {
+    suspend fun toggleFavorites(tracks: List<Track>, fallbackSource: SourceId = SourceId.YOUTUBE): List<Track> = withContext(Dispatchers.IO) {
         favoritesStoreMutationMutex.withLock {
-            val current = loadInternal()
+            if (tracks.isEmpty()) return@withContext emptyList()
+            val targetSource = tracks.firstOrNull()?.sourceId() ?: fallbackSource
+            val current = loadInternal(targetSource)
             val updated = toggleFavoriteTracks(current, tracks)
-            if (updated != current) saveAndCompleteMigration(updated)
+            if (updated != current) saveForSourceInternal(targetSource, updated)
             updated
         }
     }
 
-    private suspend fun loadInternal(failOnReadError: Boolean = false): List<Track> {
-        val entities = runCatching { dao.all() }
+    private suspend fun loadInternal(source: SourceId = SourceId.YOUTUBE, failOnReadError: Boolean = false): List<Track> {
+        val allEntities = runCatching { dao.all() }
             .onFailure { Timber.w(it, "Favorite tracks load failed") }
             .getOrElse { error -> if (failOnReadError) throw error else return emptyList() }
-        rememberTimestampSnapshot(entities.associate { it.id to it.createdAt })
-        val stored = entities.map { it.toTrack() }
-        if (stored.isNotEmpty()) {
+        rememberTimestampSnapshot(allEntities.associate { it.id to it.createdAt })
+        if (allEntities.isNotEmpty()) {
             completeLegacyMigration()
-            return stored
+            return allEntities.filter { it.sourceId() == source }.map { it.toTrack() }
         }
         if (legacyPrefs.getBoolean(MIGRATION_COMPLETE_KEY, false)) return emptyList()
 
         val legacy = loadLegacyForMigration() ?: return emptyList()
-        replaceAll(legacy)
+        saveForSourceInternal(SourceId.YOUTUBE, legacy, allEntities)
         completeLegacyMigration()
-        return legacy
+        return if (source == SourceId.YOUTUBE) legacy else emptyList()
     }
 
-    private suspend fun loadTimestampsInternal(): Map<String, Long> {
-        currentTimestampSnapshot()?.let { return it }
+    private suspend fun loadTimestampsInternal(source: SourceId = SourceId.YOUTUBE): Map<String, Long> {
         return runCatching {
-            dao.all().associate { it.id to it.createdAt }
-        }.onSuccess(::rememberTimestampSnapshot)
-            .getOrDefault(emptyMap())
+            dao.all().filter { it.sourceId() == source }.associate { it.id to it.createdAt }
+        }.getOrDefault(emptyMap())
     }
 
     private fun currentTimestampSnapshot(): Map<String, Long>? {
@@ -150,31 +202,38 @@ class FavoritesStore(context: Context) {
         )
     }
 
-    private suspend fun saveAndCompleteMigration(tracks: List<Track>) {
+    private suspend fun saveForSourceInternal(
+        source: SourceId,
+        tracks: List<Track>,
+        currentEntities: List<FavoriteTrackEntity>? = null
+    ) {
         try {
-            replaceAll(tracks)
+            val allEntities = currentEntities ?: dao.all()
+            val otherEntities = allEntities.filter { it.sourceId() != source }
+            val existingTimestamps = allEntities.associate { it.id to it.createdAt }
+            val now = System.currentTimeMillis()
+            val newEntities = tracks.mapIndexed { index, track ->
+                val timestamp = existingTimestamps[track.id]?.takeIf { it > 0L } ?: (now - index)
+                val normalizedTrack = when {
+                    track.source.isNotBlank() -> track
+                    source == SourceId.YANDEX -> track.copy(source = "yandex_music")
+                    source == SourceId.SOUNDCLOUD -> track.copy(source = "soundcloud")
+                    else -> track.copy(source = "youtube")
+                }
+                normalizedTrack.toFavoriteTrackEntity(timestamp)
+            }
+            val combined = otherEntities + newEntities
+            dao.replaceAll(combined)
+            val generation = favoritesTimestampGeneration.incrementAndGet()
+            timestampSnapshot = FavoriteTimestampSnapshot(
+                generation = generation,
+                values = combined.associate { it.id to it.createdAt }
+            )
             completeLegacyMigration()
         } catch (error: Throwable) {
-            Timber.w(error, "Favorite tracks save failed")
+            Timber.w(error, "Favorite tracks save failed for source $source")
             throw error
         }
-    }
-
-    private suspend fun replaceAll(tracks: List<Track>) {
-        val existingTimestamps = currentTimestampSnapshot() ?: dao.all().associate {
-            it.id to it.createdAt
-        }
-        val now = System.currentTimeMillis()
-        val entities = tracks.mapIndexed { index, track ->
-            val timestamp = existingTimestamps[track.id]?.takeIf { it > 0L } ?: (now - index)
-            track.toFavoriteTrackEntity(timestamp)
-        }
-        dao.replaceAll(entities)
-        val generation = favoritesTimestampGeneration.incrementAndGet()
-        timestampSnapshot = FavoriteTimestampSnapshot(
-            generation = generation,
-            values = entities.associate { it.id to it.createdAt }
-        )
     }
 
     private fun loadLegacyForMigration(): List<Track>? {

@@ -24,7 +24,9 @@ import kotlinx.coroutines.withContext
 
 internal class YandexMusicAudioProvider(
     private val client: YandexMusicClient,
-    private val sessionStore: YandexMusicSessionStore
+    private val sessionStore: YandexMusicSessionStore,
+    private val favoritesStore: com.luc4n3x.levyra.data.FavoritesStore? = null,
+    private val playlistStore: com.luc4n3x.levyra.data.PlaylistStore? = null
 ) : HighQualityAudioProvider, LevyraCatalogProvider, LevyraPlaybackProvider,
     com.luc4n3x.levyra.feature.source.SourceLibraryProvider,
     com.luc4n3x.levyra.feature.source.SourceHomeProvider,
@@ -45,6 +47,22 @@ internal class YandexMusicAudioProvider(
         get() = sessionStore.loadToken()
 
     fun isAuthorized(): Boolean = !token.isNullOrBlank()
+
+    suspend fun likeTrack(trackId: String): Boolean {
+        val currentToken = token ?: return false
+        val uid = sessionStore.loadAccount()?.uid.orEmpty()
+        if (uid.isBlank()) return false
+        val rawId = trackId.removePrefix("yandex:")
+        return client.likeTrack(uid, rawId, currentToken)
+    }
+
+    suspend fun unlikeTrack(trackId: String): Boolean {
+        val currentToken = token ?: return false
+        val uid = sessionStore.loadAccount()?.uid.orEmpty()
+        if (uid.isBlank()) return false
+        val rawId = trackId.removePrefix("yandex:")
+        return client.unlikeTrack(uid, rawId, currentToken)
+    }
 
     override suspend fun search(query: String, page: Int): ProviderSearchOutcome = try {
         val tracks = client.search(query, token)

@@ -16,6 +16,7 @@ import com.luc4n3x.levyra.domain.PlaylistTag
 import com.luc4n3x.levyra.domain.Track
 import com.luc4n3x.levyra.domain.normalizePlaylistTagName
 import com.luc4n3x.levyra.domain.sanitizePlaylistTagName
+import com.luc4n3x.levyra.feature.source.SourceId
 import java.util.UUID
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.sync.Mutex
@@ -40,13 +41,21 @@ class PlaylistStore(context: Context) {
         coverMutationLocks.getOrPut(playlistId) { Mutex() }
     }
 
-    suspend fun loadAll(): List<Playlist> = withContext(Dispatchers.IO) {
+    suspend fun loadAll(source: SourceId = SourceId.YOUTUBE): List<Playlist> = withContext(Dispatchers.IO) {
         runCatching {
             val tagsByPlaylist = tagAssignments()
-            dao.allPlaylists().map { entity ->
-                val tracks = dao.tracksOf(entity.id).map { it.toTrack() }
-                entity.toPlaylist(tracks, tagsByPlaylist[entity.id].orEmpty())
-            }
+            dao.allPlaylists()
+                .filter { entity ->
+                    when (source) {
+                        SourceId.YANDEX -> entity.id.startsWith("yandex:")
+                        SourceId.SOUNDCLOUD -> entity.id.startsWith("soundcloud:")
+                        SourceId.YOUTUBE -> !entity.id.startsWith("yandex:") && !entity.id.startsWith("soundcloud:")
+                    }
+                }
+                .map { entity ->
+                    val tracks = dao.tracksOf(entity.id).map { it.toTrack() }
+                    entity.toPlaylist(tracks, tagsByPlaylist[entity.id].orEmpty())
+                }
         }.onFailure { Timber.w(it, "Playlist load failed") }.getOrDefault(emptyList())
     }
 
@@ -165,9 +174,18 @@ class PlaylistStore(context: Context) {
             }
     }
 
-    suspend fun create(name: String, firstTrack: Track? = null): Playlist = withContext(Dispatchers.IO) {
+    suspend fun create(
+        name: String,
+        firstTrack: Track? = null,
+        source: SourceId = SourceId.YOUTUBE
+    ): Playlist = withContext(Dispatchers.IO) {
         val now = System.currentTimeMillis()
-        val id = UUID.randomUUID().toString()
+        val rawUuid = UUID.randomUUID().toString()
+        val id = when (source) {
+            SourceId.YANDEX -> "yandex:playlist:$rawUuid"
+            SourceId.SOUNDCLOUD -> "soundcloud:playlist:$rawUuid"
+            SourceId.YOUTUBE -> rawUuid
+        }
         val cover = firstTrack?.largeThumbnailUrl?.ifBlank { firstTrack.thumbnailUrl }.orEmpty()
         dao.createPlaylistWithTracks(
             playlist = PlaylistEntity(id, name.trim().ifBlank { "Playlist" }, cover, now, now),
@@ -187,12 +205,22 @@ class PlaylistStore(context: Context) {
         )
     }
 
-    suspend fun createWithTracks(name: String, tracks: List<Track>, playlistId: String? = null): Playlist = withContext(Dispatchers.IO) {
+    suspend fun createWithTracks(
+        name: String,
+        tracks: List<Track>,
+        playlistId: String? = null,
+        source: SourceId = SourceId.YOUTUBE
+    ): Playlist = withContext(Dispatchers.IO) {
         val cleanTracks = validPlaylistTracks(tracks)
         require(cleanTracks.isNotEmpty()) { "Cannot create a playlist without valid tracks" }
 
         val now = System.currentTimeMillis()
-        val id = playlistId ?: UUID.randomUUID().toString()
+        val rawUuid = UUID.randomUUID().toString()
+        val id = playlistId ?: when (source) {
+            SourceId.YANDEX -> "yandex:playlist:$rawUuid"
+            SourceId.SOUNDCLOUD -> "soundcloud:playlist:$rawUuid"
+            SourceId.YOUTUBE -> rawUuid
+        }
         val cleanName = name.trim().ifBlank { "Playlist" }
         val cover = cleanTracks.firstNotNullOfOrNull { track ->
             track.largeThumbnailUrl.ifBlank { track.thumbnailUrl }.takeIf(String::isNotBlank)

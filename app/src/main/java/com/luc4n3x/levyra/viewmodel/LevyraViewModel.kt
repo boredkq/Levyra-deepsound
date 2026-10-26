@@ -23,6 +23,7 @@ import com.luc4n3x.levyra.data.yandex.YandexMusicSessionStore
 import com.luc4n3x.levyra.data.soundcloud.SoundCloudAudioProvider
 import com.luc4n3x.levyra.data.soundcloud.SoundCloudClient
 import com.luc4n3x.levyra.data.soundcloud.SoundCloudSessionStore
+import com.luc4n3x.levyra.feature.source.sourceId
 import com.luc4n3x.levyra.data.collections.isPersonalCollectionTrack
 import com.luc4n3x.levyra.data.ArtistRepository
 import com.luc4n3x.levyra.data.ChartsRepository
@@ -905,13 +906,17 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     private val yandexMusicProvider by lazy {
         YandexMusicAudioProvider(
             client = YandexMusicClient(),
-            sessionStore = YandexMusicSessionStore.getInstance(application.applicationContext)
+            sessionStore = YandexMusicSessionStore.getInstance(application.applicationContext),
+            favoritesStore = favoritesStore,
+            playlistStore = playlistStore
         )
     }
     private val soundCloudProvider by lazy {
         SoundCloudAudioProvider(
             client = SoundCloudClient(),
-            sessionStore = SoundCloudSessionStore.getInstance(application.applicationContext)
+            sessionStore = SoundCloudSessionStore.getInstance(application.applicationContext),
+            favoritesStore = favoritesStore,
+            playlistStore = playlistStore
         )
     }
     private val providerRouter = LevyraProviderRouter(
@@ -1675,8 +1680,9 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         observeJamState()
         observeSimilarSongsSeed()
         observeConnectivity()
-        val favorites = favoritesStore.load()
-        val favoriteTimestamps = favoritesStore.loadTimestamps()
+        val startupSource = startupInterfaceSettings.activeSource
+        val favorites = favoritesStore.load(startupSource)
+        val favoriteTimestamps = favoritesStore.loadTimestamps(startupSource)
         val settings = startupSettings
         val repairedRecentSearches = settings.recentSearches
             .map(LevyraPersonalOrbit::withoutVideoArtwork)
@@ -3097,11 +3103,9 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
 
 
     private fun loadPlaylists() {
-        // While a non-YouTube source is active, state.playlists holds that source's playlists
-        // (M3). Don't overwrite them with the local store.
-        if (!isLocalLibraryWritable()) return
         viewModelScope.launch {
-            val lists = playlistStore.loadAll()
+            val source = _state.value.interfaceSettings.activeSource
+            val lists = playlistStore.loadAll(source)
             val tags = playlistStore.allTags()
             _state.update { it.copy(playlists = lists, playlistTags = tags) }
         }
@@ -3297,9 +3301,9 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     fun createPlaylist(name: String, firstTrack: Track? = null) {
-        if (!isLocalLibraryWritable()) return
+        val source = _state.value.interfaceSettings.activeSource
         viewModelScope.launch {
-            playlistStore.create(name, firstTrack)
+            playlistStore.create(name, firstTrack, source)
             loadPlaylists()
         }
     }
@@ -3309,7 +3313,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     fun createPlaylistWithTracks(name: String, tracks: List<Track>) {
-        if (!isLocalLibraryWritable()) return
+        val source = _state.value.interfaceSettings.activeSource
         viewModelScope.launch {
             val cleanTracks = tracks.distinctBy { it.id }.filter { it.id.isNotBlank() }
             if (cleanTracks.isEmpty()) {
@@ -3317,7 +3321,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 return@launch
             }
             val playlist = runCatchingPreservingCancellation {
-                playlistStore.createWithTracks(name, cleanTracks.map { it.copy(streamUrl = "") })
+                playlistStore.createWithTracks(name, cleanTracks.map { it.copy(streamUrl = "") }, source = source)
             }.onFailure { error ->
                 Timber.w(error, "Playlist batch create failed")
             }.getOrNull()
@@ -3552,16 +3556,16 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     private fun observeFavoriteStore() {
         favoriteStoreJob?.cancel()
         favoriteStoreJob = viewModelScope.launch {
-            favoritesStore.observeMembership().collect { membership ->
-                // While a non-YouTube source is active, state.favorites holds that source's likes
-                // (M3). Don't overwrite them with the local favorites store.
-                if (!isLocalLibraryWritable()) return@collect
+            val activeSource = _state.value.interfaceSettings.activeSource
+            favoritesStore.observeMembership(activeSource).collect { membership ->
                 val addedCurrent = favoriteMutationMutex.withLock {
+                    val currentSource = _state.value.interfaceSettings.activeSource
+                    if (currentSource != activeSource) return@collect
                     val previous = _state.value.favorites
                     val stale = withContext(Dispatchers.Default) { !membership.sameTracksAs(previous) }
                     if (!stale) return@withLock null
-                    val favorites = withContext(Dispatchers.IO) { favoritesStore.load() }
-                    val timestamps = favoritesStore.loadTimestampsSuspending()
+                    val favorites = withContext(Dispatchers.IO) { favoritesStore.load(activeSource) }
+                    val timestamps = favoritesStore.loadTimestampsSuspending(activeSource)
                     _state.update { state ->
                         state.copy(
                             favorites = favorites,
@@ -5988,28 +5992,50 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         sourceLibraryJob = viewModelScope.launch {
             when (source) {
                 com.luc4n3x.levyra.feature.source.SourceId.YANDEX -> {
-                    val library = runCatching { yandexMusicProvider.loadLibrary() }
-                        .getOrDefault(com.luc4n3x.levyra.feature.source.SourceLibrary())
-                    // The user may have switched back while we were loading; honor the latest choice.
-                    if (_state.value.interfaceSettings.activeSource !=
-                        com.luc4n3x.levyra.feature.source.SourceId.YANDEX
-                    ) {
-                        return@launch
-                    }
+                    val cachedFavorites = withContext(Dispatchers.IO) { favoritesStore.load(source) }
+                    val cachedTimestamps = withContext(Dispatchers.IO) { favoritesStore.loadTimestampsSuspending(source) }
+                    val cachedPlaylists = playlistStore.loadAll(source)
                     _state.update {
                         it.copy(
-                            favorites = library.favorites,
-                            favoriteIds = library.favorites.map { track -> track.id }.toSet(),
-                            favoriteTimestamps = emptyMap(),
-                            playlists = library.playlists,
+                            favorites = cachedFavorites,
+                            favoriteIds = cachedFavorites.map { track -> track.id }.toSet(),
+                            favoriteTimestamps = cachedTimestamps,
+                            playlists = cachedPlaylists,
                             playlistTags = emptyList()
                         )
                     }
                     refreshForgottenFavorites()
+
+                    val library = runCatching { yandexMusicProvider.loadLibrary() }.getOrNull()
+                    if (library != null && _state.value.interfaceSettings.activeSource ==
+                        com.luc4n3x.levyra.feature.source.SourceId.YANDEX
+                    ) {
+                        if (library.favorites.isNotEmpty()) {
+                            withContext(Dispatchers.IO) {
+                                favoritesStore.saveForSource(source, library.favorites)
+                            }
+                        }
+                        val finalFavorites = if (library.favorites.isNotEmpty()) library.favorites else cachedFavorites
+                        val finalPlaylists = if (library.playlists.isNotEmpty()) library.playlists else cachedPlaylists
+                        val finalTimestamps = withContext(Dispatchers.IO) { favoritesStore.loadTimestampsSuspending(source) }
+                        _state.update {
+                            it.copy(
+                                favorites = finalFavorites,
+                                favoriteIds = finalFavorites.map { track -> track.id }.toSet(),
+                                favoriteTimestamps = finalTimestamps,
+                                playlists = finalPlaylists
+                            )
+                        }
+                        refreshForgottenFavorites()
+                    }
                 }
                 com.luc4n3x.levyra.feature.source.SourceId.SOUNDCLOUD -> {
-                    val library = runCatching { soundCloudProvider.loadLibrary() }
-                        .getOrDefault(com.luc4n3x.levyra.feature.source.SourceLibrary())
+                    val favorites = withContext(Dispatchers.IO) { favoritesStore.load(source) }
+                    val favoriteTimestamps = withContext(Dispatchers.IO) {
+                        favoritesStore.loadTimestampsSuspending(source)
+                    }
+                    val playlists = playlistStore.loadAll(source)
+                    val playlistTags = playlistStore.allTags()
                     if (_state.value.interfaceSettings.activeSource !=
                         com.luc4n3x.levyra.feature.source.SourceId.SOUNDCLOUD
                     ) {
@@ -6017,21 +6043,21 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                     }
                     _state.update {
                         it.copy(
-                            favorites = library.favorites,
-                            favoriteIds = library.favorites.map { track -> track.id }.toSet(),
-                            favoriteTimestamps = emptyMap(),
-                            playlists = library.playlists,
-                            playlistTags = emptyList()
+                            favorites = favorites,
+                            favoriteIds = favorites.map { track -> track.id }.toSet(),
+                            favoriteTimestamps = favoriteTimestamps,
+                            playlists = playlists,
+                            playlistTags = playlistTags
                         )
                     }
                     refreshForgottenFavorites()
                 }
                 com.luc4n3x.levyra.feature.source.SourceId.YOUTUBE -> {
-                    val favorites = withContext(Dispatchers.IO) { favoritesStore.load() }
+                    val favorites = withContext(Dispatchers.IO) { favoritesStore.load(source) }
                     val favoriteTimestamps = withContext(Dispatchers.IO) {
-                        favoritesStore.loadTimestampsSuspending()
+                        favoritesStore.loadTimestampsSuspending(source)
                     }
-                    val playlists = playlistStore.loadAll()
+                    val playlists = playlistStore.loadAll(source)
                     val playlistTags = playlistStore.allTags()
                     if (_state.value.interfaceSettings.activeSource !=
                         com.luc4n3x.levyra.feature.source.SourceId.YOUTUBE
@@ -6050,6 +6076,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                     refreshForgottenFavorites()
                 }
             }
+            observeFavoriteStore()
             // Home feed is per-source too: drop the previous source's shelves and reload (M4).
             // Defer until the UI is idle so the reload does not compete with the library swap and
             // stutter the tab the user is on right after connecting.
@@ -6058,14 +6085,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         }
     }
 
-    /**
-     * Whether the local library stores may be mutated. M3 keeps non-YouTube sources read-only, so
-     * favorite/playlist edits are ignored while e.g. Yandex is active and never pollute the local
-     * (YouTube) library behind the scenes.
-     */
-    private fun isLocalLibraryWritable(): Boolean =
-        _state.value.interfaceSettings.activeSource ==
-            com.luc4n3x.levyra.feature.source.SourceId.YOUTUBE
+    private fun isLocalLibraryWritable(): Boolean = true
 
     private fun syncReleaseNotificationSetting(
         previous: LevyraInterfaceSettings,
@@ -7272,7 +7292,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             _state.update { it.copy(isResolving = true) }
             viewModelScope.launch(Dispatchers.IO) {
                 val waveTracks = try {
-                    yandexMusicProvider.radioTracks(seedTrackId = null, limit = 20)
+                    yandexMusicProvider.radioTracks(seedTrackId = null, excludeIds = emptySet(), limit = 20)
                 } catch (_: Exception) {
                     emptyList()
                 }
@@ -7830,19 +7850,22 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     fun toggleFavorite(track: Track) {
-        if (!isLocalLibraryWritable()) return
         if (track.isLiveRadio()) return
+        val activeSource = _state.value.interfaceSettings.activeSource
+        val trackSource = track.sourceId()
         viewModelScope.launch {
             val (updated, isFavorite) = favoriteMutationMutex.withLock {
                 val updated = favoritesStore.toggleFavorite(track)
-                val timestamps = favoritesStore.loadTimestampsSuspending()
+                val timestamps = favoritesStore.loadTimestampsSuspending(trackSource)
                 val isFavorite = areAllFavoriteTracks(updated, listOf(track))
-                _state.update { state ->
-                    state.copy(
-                        favorites = updated,
-                        favoriteIds = updated.map { favorite -> favorite.id }.toSet(),
-                        favoriteTimestamps = timestamps
-                    )
+                if (activeSource == trackSource) {
+                    _state.update { state ->
+                        state.copy(
+                            favorites = updated,
+                            favoriteIds = updated.map { favorite -> favorite.id }.toSet(),
+                            favoriteTimestamps = timestamps
+                        )
+                    }
                 }
                 updated to isFavorite
             }
@@ -7854,6 +7877,18 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             )
             recordSmartFavorite(track, isFavorite)
             autoDownloadFavorite(track, isFavorite)
+
+            if (trackSource == com.luc4n3x.levyra.feature.source.SourceId.YANDEX) {
+                launch(Dispatchers.IO) {
+                    val rawId = track.id.removePrefix("yandex:")
+                    val ok = if (isFavorite) {
+                        yandexMusicProvider.likeTrack(rawId)
+                    } else {
+                        yandexMusicProvider.unlikeTrack(rawId)
+                    }
+                    Timber.d("Yandex like sync for $rawId (isFavorite=$isFavorite): $ok")
+                }
+            }
         }
     }
 
@@ -7897,13 +7932,13 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     fun toggleCurrentAlbumFavorite() {
-        if (!isLocalLibraryWritable()) return
         val tracks = _state.value.albumDetail?.tracks.orEmpty()
         if (tracks.isEmpty() || albumFavoriteJob?.isActive == true) return
+        val activeSource = _state.value.interfaceSettings.activeSource
         albumFavoriteJob = viewModelScope.launch {
             val updated = favoriteMutationMutex.withLock {
-                favoritesStore.toggleFavorites(tracks).also { favorites ->
-                    val timestamps = favoritesStore.loadTimestampsSuspending()
+                favoritesStore.toggleFavorites(tracks, activeSource).also { favorites ->
+                    val timestamps = favoritesStore.loadTimestampsSuspending(activeSource)
                     _state.update { state ->
                         state.copy(
                             favorites = favorites,
@@ -7919,11 +7954,23 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 updated,
                 6
             )
+            if (activeSource == com.luc4n3x.levyra.feature.source.SourceId.YANDEX) {
+                tracks.forEach { track ->
+                    val isFavorite = areAllFavoriteTracks(updated, listOf(track))
+                    launch(Dispatchers.IO) {
+                        val rawId = track.id.removePrefix("yandex:")
+                        if (isFavorite) {
+                            yandexMusicProvider.likeTrack(rawId)
+                        } else {
+                            yandexMusicProvider.unlikeTrack(rawId)
+                        }
+                    }
+                }
+            }
         }
     }
 
     fun toggleFavorites(tracks: List<Track>) {
-        if (!isLocalLibraryWritable()) return
         val cleanTracks = tracks
             .asSequence()
             .filterNot { track -> track.isLiveRadio() }
@@ -7936,10 +7983,11 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             }
             .toList()
         if (cleanTracks.isEmpty()) return
+        val activeSource = _state.value.interfaceSettings.activeSource
         viewModelScope.launch {
             val updated = favoriteMutationMutex.withLock {
-                favoritesStore.toggleFavorites(cleanTracks).also { favorites ->
-                    val timestamps = favoritesStore.loadTimestampsSuspending()
+                favoritesStore.toggleFavorites(cleanTracks, activeSource).also { favorites ->
+                    val timestamps = favoritesStore.loadTimestampsSuspending(activeSource)
                     _state.update { state ->
                         state.copy(
                             favorites = favorites,
@@ -7959,14 +8007,24 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 val isFavorite = areAllFavoriteTracks(updated, listOf(track))
                 recordSmartFavorite(track, isFavorite)
                 autoDownloadFavorite(track, isFavorite)
+                if (track.sourceId() == com.luc4n3x.levyra.feature.source.SourceId.YANDEX) {
+                    launch(Dispatchers.IO) {
+                        val rawId = track.id.removePrefix("yandex:")
+                        if (isFavorite) {
+                            yandexMusicProvider.likeTrack(rawId)
+                        } else {
+                            yandexMusicProvider.unlikeTrack(rawId)
+                        }
+                    }
+                }
             }
         }
     }
 
     fun removeFavorites(tracks: List<Track>) {
-        if (!isLocalLibraryWritable()) return
         val ids = tracks.map { it.id }.filter(String::isNotBlank).toSet()
         if (ids.isEmpty()) return
+        val activeSource = _state.value.interfaceSettings.activeSource
         val current = _state.value.favorites
         val updated = current.filterNot { it.id in ids }
         if (updated.size == current.size) return
@@ -7977,7 +8035,15 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 favoriteTimestamps = it.favoriteTimestamps - ids
             )
         }
-        viewModelScope.launch(Dispatchers.IO) { favoritesStore.saveSuspending(updated) }
+        viewModelScope.launch(Dispatchers.IO) {
+            favoritesStore.saveForSourceSuspending(activeSource, updated)
+            if (activeSource == com.luc4n3x.levyra.feature.source.SourceId.YANDEX) {
+                tracks.forEach { track ->
+                    val rawId = track.id.removePrefix("yandex:")
+                    yandexMusicProvider.unlikeTrack(rawId)
+                }
+            }
+        }
         refreshForgottenFavorites()
         _state.update { it.copy(offlineExportMessage = "Rimossi dai preferiti: ${current.size - updated.size}") }
     }

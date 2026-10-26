@@ -10,6 +10,8 @@ import com.luc4n3x.levyra.data.hqaudio.ProviderSearchOutcome
 import com.luc4n3x.levyra.data.hqaudio.ProviderStreamOutcome
 import com.luc4n3x.levyra.data.hqaudio.ResolvedHighQualityStream
 import com.luc4n3x.levyra.data.hqaudio.StreamRejection
+import com.luc4n3x.levyra.data.FavoritesStore
+import com.luc4n3x.levyra.data.PlaylistStore
 import com.luc4n3x.levyra.domain.AlbumDetail
 import com.luc4n3x.levyra.domain.AlbumHit
 import com.luc4n3x.levyra.domain.HomeSection
@@ -31,7 +33,9 @@ import kotlinx.coroutines.withContext
 
 internal class SoundCloudAudioProvider(
     private val client: SoundCloudClient = SoundCloudClient(),
-    private val sessionStore: SoundCloudSessionStore? = null
+    private val sessionStore: SoundCloudSessionStore? = null,
+    private val favoritesStore: FavoritesStore? = null,
+    private val playlistStore: PlaylistStore? = null
 ) : HighQualityAudioProvider,
     LevyraCatalogProvider,
     LevyraPlaybackProvider,
@@ -172,8 +176,15 @@ internal class SoundCloudAudioProvider(
     // ── SourceLibraryProvider ──
 
     override suspend fun loadLibrary(): SourceLibrary {
-        // Reserved for future OAuth synchronization of user's liked tracks and playlists
-        return SourceLibrary(favorites = emptyList(), playlists = emptyList())
+        val favorites = favoritesStore?.load(SourceId.SOUNDCLOUD) ?: emptyList()
+        val playlists = playlistStore?.loadAll(SourceId.SOUNDCLOUD) ?: emptyList()
+        return SourceLibrary(favorites = favorites, playlists = playlists)
+    }
+
+    suspend fun saveTrack(track: Track) {
+        if (!owns(track)) return
+        val normalized = if (track.source.isBlank()) track.copy(source = PROVIDER_ID) else track
+        favoritesStore?.saveForSource(SourceId.SOUNDCLOUD, listOf(normalized))
     }
 
     // ── SourceHomeProvider ──
