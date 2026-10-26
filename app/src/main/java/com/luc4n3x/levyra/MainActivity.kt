@@ -50,6 +50,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.lifecycleScope
 import com.luc4n3x.levyra.data.LevyraArtworkCache
 import com.luc4n3x.levyra.data.LevyraBackupManager
+import com.luc4n3x.levyra.debug.FrameJankLogger
 import com.luc4n3x.levyra.domain.AppUpdateInfo
 import com.luc4n3x.levyra.domain.ChartsCatalog
 import com.luc4n3x.levyra.domain.LevyraFontPreset
@@ -140,6 +141,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        if (BuildConfig.DEBUG) FrameJankLogger.attach(this)
         applyOrientationPolicy()
         configureFastImageLoader()
         requestNotificationPermission()
@@ -340,6 +342,7 @@ class MainActivity : ComponentActivity() {
     }
 
     override fun onDestroy() {
+        if (BuildConfig.DEBUG) FrameJankLogger.detach(this)
         updateJob?.cancel()
         LevyraPipBridge.unbind()
         super.onDestroy()
