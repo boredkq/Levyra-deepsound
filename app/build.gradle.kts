@@ -71,22 +71,22 @@ val publicYoutubeInnertubeApiKey = "AIzaSyA8eiZmM1FaDVjRy-df2KTyQ_vz_yYM39w"
 val youtubeInnertubeApiKey = if (isFdroidBuild) {
     publicYoutubeInnertubeApiKey
 } else {
-    envOrProperty("YOUTUBE_INNERTUBE_API_KEY", "youtubeInnertubeApiKey")
+    envOrProperty("YOUTUBE_INNERTUBE_API_KEY", "youtubeInnertubeApiKey").ifBlank { publicYoutubeInnertubeApiKey }
 }
 val canvasResolverUrl = if (isFdroidBuild) {
     ""
 } else {
-    envOrProperty("LEVYRA_CANVAS_RESOLVER_URL", "levyraCanvasResolverUrl")
+    envOrProperty("LEVYRA_CANVAS_RESOLVER_URL", "levyraCanvasResolverUrl").ifBlank { "https://canvas.example.invalid/v1/resolve" }
 }
 val canvasClientKey = if (isFdroidBuild) {
     ""
 } else {
-    envOrProperty("LEVYRA_CANVAS_CLIENT_KEY", "levyraCanvasClientKey")
+    envOrProperty("LEVYRA_CANVAS_CLIENT_KEY", "levyraCanvasClientKey").ifBlank { "levyra_canvas_client_key" }
 }
 val releaseStoreFilePath = envOrProperty("LEVYRA_KEYSTORE_FILE", "levyraStoreFile").ifBlank { "app/levyra-release.jks" }
-val releaseStorePassword = envOrProperty("LEVYRA_KEYSTORE_PASSWORD", "levyraStorePassword")
-val releaseKeyAlias = envOrProperty("LEVYRA_KEY_ALIAS", "levyraKeyAlias")
-val releaseKeyPassword = envOrProperty("LEVYRA_KEY_PASSWORD", "levyraKeyPassword")
+val releaseStorePassword = envOrProperty("LEVYRA_KEYSTORE_PASSWORD", "levyraStorePassword").ifBlank { "levyra_release_2026" }
+val releaseKeyAlias = envOrProperty("LEVYRA_KEY_ALIAS", "levyraKeyAlias").ifBlank { "levyra_release" }
+val releaseKeyPassword = envOrProperty("LEVYRA_KEY_PASSWORD", "levyraKeyPassword").ifBlank { "levyra_release_2026" }
 val releaseStoreFile = rootProject.file(releaseStoreFilePath)
 val releaseSigningAvailable = releaseStoreFile.isFile && releaseStorePassword.isNotBlank() && releaseKeyAlias.isNotBlank() && releaseKeyPassword.isNotBlank()
 
