@@ -7243,6 +7243,50 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         startSongRadio()
     }
 
+    fun startMyWave(seedTrack: Track? = null) {
+        if (jamController.rejectGuestLocalMutation()) return
+        val current = _state.value.currentTrack
+        val isCurrentYandex = current != null &&
+            (current.id.startsWith("yandex:") || current.source == "yandex_music") &&
+            queueEngine.state.value.radioEnabled
+
+        if (isCurrentYandex && (seedTrack == null || samePlayableTrack(current, seedTrack))) {
+            if (_state.value.isResolving) return
+            togglePlay()
+            return
+        }
+
+        if (!yandexMusicProvider.isAuthorized()) {
+            Toast.makeText(
+                getApplication<Application>(),
+                "Для запуска «Моей волны» подключите аккаунт Яндекс Музыки в настройках",
+                Toast.LENGTH_LONG
+            ).show()
+            return
+        }
+
+        val target = seedTrack ?: current?.takeIf { it.id.startsWith("yandex:") }
+        if (target != null) {
+            startSongRadioFrom(target)
+        } else {
+            _state.update { it.copy(isResolving = true) }
+            viewModelScope.launch(Dispatchers.IO) {
+                val waveTracks = try {
+                    yandexMusicProvider.radioTracks(seedTrackId = null, limit = 20)
+                } catch (_: Exception) {
+                    emptyList()
+                }
+                withContext(Dispatchers.Main) {
+                    _state.update { it.copy(isResolving = false) }
+                    if (waveTracks.isNotEmpty()) {
+                        playFrom(waveTracks, waveTracks[0])
+                        startSongRadio()
+                    }
+                }
+            }
+        }
+    }
+
     fun playSimilarSong(track: Track) {
         val jam = _state.value.jam
         if (jam.role != JamRole.Guest) {

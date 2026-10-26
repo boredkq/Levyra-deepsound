@@ -44,6 +44,8 @@ internal class YandexMusicAudioProvider(
     private val token: String?
         get() = sessionStore.loadToken()
 
+    fun isAuthorized(): Boolean = !token.isNullOrBlank()
+
     override suspend fun search(query: String, page: Int): ProviderSearchOutcome = try {
         val tracks = client.search(query, token)
         val candidates = tracks.map { track ->

@@ -355,6 +355,28 @@ class HomeEditorialEngineTest {
         assertFalse(collections.any { it.tracks.size < 4 })
     }
 
+    @Test
+    fun yandexSourcePrioritizesYandexTracksForSpotlight() {
+        val ytTrack = track("yt_track")
+        val yandexTrack = track("yandex:999").copy(source = "yandex_music")
+
+        val candidates = HomeEditorialEngine.buildSpotlightCandidates(
+            showNewReleases = false,
+            newReleaseTracks = emptyList(),
+            showPersonalOrbit = false,
+            personalTracks = emptyList(),
+            showResonance = false,
+            resonanceTracks = emptyList(),
+            quickPickTracks = listOf(ytTrack),
+            fallbackSections = listOf(listOf(yandexTrack)),
+            chartTracks = emptyList(),
+            isYandexSource = true,
+            nowMillis = 1_753_276_800_000L
+        )
+
+        assertEquals("yandex:999", candidates.first().track.id)
+    }
+
     private fun track(
         id: String,
         releaseDate: String = "",

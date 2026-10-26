@@ -57,7 +57,8 @@ object HomeEditorialEngine {
         fallbackSections: List<List<Track>>,
         chartTracks: List<Track>,
         preferenceScore: (Track) -> Int = { 0 },
-        nowMillis: Long = System.currentTimeMillis()
+        nowMillis: Long = System.currentTimeMillis(),
+        isYandexSource: Boolean = false
     ): List<HomeSpotlightCandidate> {
         val sourcePriority = LinkedHashMap<String, Int>()
         val candidates = LinkedHashMap<String, Track>()
@@ -65,9 +66,11 @@ object HomeEditorialEngine {
         fun append(tracks: List<Track>, priority: Int) {
             tracks.forEach { track ->
                 if (!isReliableCandidate(track)) return@forEach
+                val isYandexTrack = track.id.startsWith("yandex:") || track.source == "yandex_music"
+                val effectivePriority = if (isYandexSource && isYandexTrack) priority + 3_000 else priority
                 val key = identityKey(track)
                 candidates.putIfAbsent(key, track)
-                sourcePriority[key] = maxOf(sourcePriority[key] ?: Int.MIN_VALUE, priority)
+                sourcePriority[key] = maxOf(sourcePriority[key] ?: Int.MIN_VALUE, effectivePriority)
             }
         }
 
@@ -75,7 +78,10 @@ object HomeEditorialEngine {
         if (showPersonalOrbit) append(personalTracks, 1_250)
         if (showResonance) append(resonanceTracks, 1_100)
         append(quickPickTracks, 950)
-        fallbackSections.forEachIndexed { index, tracks -> append(tracks, 780 - index.coerceAtMost(5) * 35) }
+        fallbackSections.forEachIndexed { index, tracks ->
+            val basePriority = if (isYandexSource) 2_200 else 780
+            append(tracks, basePriority - index.coerceAtMost(5) * 35)
+        }
         append(chartTracks, 1_300)
 
         val newReleaseKeys = if (showNewReleases) {
@@ -124,6 +130,13 @@ object HomeEditorialEngine {
             compareByDescending<HomeSpotlightCandidate> { it.score }
                 .thenBy { stableHash("$daySeed|${it.track.id}|${it.track.title}") }
         )
+
+        if (isYandexSource) {
+            val yandexCandidates = rankedCandidates.filter {
+                it.track.id.startsWith("yandex:") || it.track.source == "yandex_music"
+            }
+            if (yandexCandidates.isNotEmpty()) return yandexCandidates
+        }
 
         val freshCandidates = rankedCandidates.filter { candidate ->
             candidate.kind == HomeSpotlightKind.ReleasedToday ||

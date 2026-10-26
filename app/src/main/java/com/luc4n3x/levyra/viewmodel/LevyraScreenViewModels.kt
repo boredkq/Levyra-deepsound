@@ -190,6 +190,8 @@ class HomeViewModel internal constructor(
     fun openArtistFromHit(hit: ArtistHit) = root.openArtistFromHit(hit)
     fun openSettings() = root.openSettings()
     fun openSearch() = root.selectTab(LevyraTab.Search)
+    fun startMyWave(seedTrack: Track? = null) = root.startMyWave(seedTrack)
+    fun togglePlay() = root.togglePlay()
     fun playAlbumRecommendations(albums: List<AlbumHit>) = root.playAlbumRecommendations(albums)
     fun refreshHomeArtists() = root.refreshHomeArtists()
     fun refreshHomeResonanceComments(tracks: List<Track>) = root.refreshHomeResonanceComments(tracks)
@@ -317,6 +319,8 @@ class ExploreViewModel(root: LevyraViewModel) : LevyraScreenViewModel(root, ::ex
     fun openArtistByName(name: String) = root.openArtistByName(name)
     fun openSettings() = root.openSettings()
     fun openSearch() = root.selectTab(LevyraTab.Search)
+    fun startMyWave(seedTrack: Track? = null) = root.startMyWave(seedTrack)
+    fun togglePlay() = root.togglePlay()
     fun playAll(tracks: List<Track>) = root.playAll(tracks)
     fun openPlaylistHit(playlist: PlaylistHit) = root.openPlaylistHit(playlist)
     fun openAlbum(album: AlbumHit) = root.openAlbum(album)
@@ -717,7 +721,8 @@ private data class HomeDerivedInput(
     val showPersonalOrbit: Boolean,
     val showResonance: Boolean,
     val showCharts: Boolean,
-    val artistExclusions: ArtistExclusions
+    val artistExclusions: ArtistExclusions,
+    val activeSource: com.luc4n3x.levyra.feature.source.SourceId = com.luc4n3x.levyra.feature.source.SourceId.YOUTUBE
 )
 
 internal fun buildHomeRenderSnapshot(state: LevyraUiState): HomeRenderSnapshot {
@@ -803,6 +808,7 @@ private fun sameHomeDerivedInputs(previous: LevyraUiState, current: LevyraUiStat
         previous.interfaceSettings.showPersonalOrbit == current.interfaceSettings.showPersonalOrbit &&
         previous.interfaceSettings.showResonance == current.interfaceSettings.showResonance &&
         previous.interfaceSettings.showCharts == current.interfaceSettings.showCharts &&
+        previous.interfaceSettings.activeSource == current.interfaceSettings.activeSource &&
         previous.artistExclusions == current.artistExclusions
 }
 
@@ -829,7 +835,8 @@ private fun LevyraUiState.toHomeDerivedInput(): HomeDerivedInput {
         showPersonalOrbit = interfaceSettings.showPersonalOrbit,
         showResonance = interfaceSettings.showResonance,
         showCharts = interfaceSettings.showCharts,
-        artistExclusions = artistExclusions
+        artistExclusions = artistExclusions,
+        activeSource = interfaceSettings.activeSource
     )
 }
 
@@ -912,7 +919,8 @@ private fun buildHomeDerivedState(input: HomeDerivedInput): HomeDerivedState {
         quickPickTracks = moodRank(quickPicks?.tracks.orEmpty()),
         fallbackSections = otherSections.map { moodRank(it.tracks) },
         chartTracks = if (input.showCharts) moodRank(input.charts) else emptyList(),
-        preferenceScore = ::moodPreferenceScore
+        preferenceScore = ::moodPreferenceScore,
+        isYandexSource = input.activeSource == com.luc4n3x.levyra.feature.source.SourceId.YANDEX
     )
     val visibleCollectionSections = otherSections.filter { section ->
         isHomeSectionVisible(section.title, input)
@@ -996,7 +1004,7 @@ private fun buildQuickPicks(input: HomeDerivedInput): HomeSection? {
         allowOrbitOverlap: Boolean
     ) {
         if (selected.size >= HOME_QUICK_PICKS_LIMIT) return
-        if (track.id.length != 11 && !LevyraStartupCatalog.isStartupSeedId(track.id)) return
+        if (track.id.length != 11 && !track.id.startsWith("yandex:") && !track.id.startsWith("soundcloud:") && !LevyraStartupCatalog.isStartupSeedId(track.id)) return
         if (!isReliableHomeMusicCandidate(track)) return
         val identity = LevyraPersonalOrbit.identityKey(track)
         if (identity.isBlank() || (!allowOrbitOverlap && identity in orbitKeys) || !seen.add(identity)) return

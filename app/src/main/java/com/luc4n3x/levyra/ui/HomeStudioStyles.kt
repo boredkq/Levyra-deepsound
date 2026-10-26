@@ -1406,7 +1406,7 @@ private fun ExpressiveSpotlight(
                                     .background(scheme.tertiary)
                             )
                             Text(
-                                text = strings.homeSoundtrackRadio.uppercase(Locale.forLanguageTag(strings.code)),
+                                text = if (track.id.startsWith("yandex:") || track.source == "yandex_music") "МОЯ ВОЛНА" else strings.homeSoundtrackRadio.uppercase(Locale.forLanguageTag(strings.code)),
                                 style = MaterialTheme.typography.labelSmall.copy(
                                     fontWeight = FontWeight.ExtraBold,
                                     letterSpacing = 1.2.sp
@@ -3519,7 +3519,7 @@ private fun MxBleedHero(
         MxBleedTitle(
             modifier = Modifier.align(Alignment.BottomStart),
             hero = hero,
-            radioLabel = strings.homeSoundtrackRadio,
+            radioLabel = if (hero.track.id.startsWith("yandex:") || hero.track.source == "yandex_music") "Моя волна" else strings.homeSoundtrackRadio,
             playLabel = playLabel,
             playing = playing,
             spinAngle = { spin.value },

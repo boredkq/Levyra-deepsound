@@ -9278,28 +9278,21 @@ private fun HomeScreen(
             "$identity:${artist.third.trim()}"
         }
     }
+    val isYandexActiveSource = state.interfaceSettings.activeSource == com.luc4n3x.levyra.feature.source.SourceId.YANDEX
     val spotlightCandidate = remember(
         spotlightCandidates,
         stableSpotlightId,
         soundtrackArtistPool,
-        state.currentTrack?.id
+        state.currentTrack?.id,
+        isYandexActiveSource
     ) {
-        fun hasArtistPortrait(candidate: HomeSpotlightCandidate): Boolean {
-            return soundtrackArtistPool.any { artist ->
-                homeSoundtrackMatchesArtist(candidate.track, artist.first, artist.second) &&
-                    homeArtistPortraitUrlEligible(artist.third)
-            }
-        }
-        spotlightCandidates.firstOrNull {
-            it.track.id == stableSpotlightId && hasArtistPortrait(it)
-        }
-            ?: spotlightCandidates.firstOrNull {
-                it.track.id != state.currentTrack?.id && hasArtistPortrait(it)
-            }
-            ?: spotlightCandidates.firstOrNull(::hasArtistPortrait)
-            ?: spotlightCandidates.firstOrNull { it.track.id == stableSpotlightId }
-            ?: spotlightCandidates.firstOrNull { it.track.id != state.currentTrack?.id }
-            ?: spotlightCandidates.firstOrNull()
+        selectStudioSpotlightCandidate(
+            spotlightCandidates = spotlightCandidates,
+            stableSpotlightId = stableSpotlightId,
+            soundtrackArtistPool = soundtrackArtistPool,
+            currentTrackId = state.currentTrack?.id,
+            isYandexSource = isYandexActiveSource
+        )
     }
     LaunchedEffect(spotlightDayKey, spotlightCandidate?.track?.id, spotlightCandidates) {
         if (spotlightCandidate != null && stableSpotlightId != spotlightCandidate.track.id) {
@@ -9327,43 +9320,7 @@ private fun HomeScreen(
         spotlightDayKey,
         state.languageCode
     ) {
-        val candidate = spotlightCandidate ?: return@remember null
-        val heroTrack = candidate.track
-        val matchingPortraits = soundtrackArtistPool.filter { artist ->
-            homeSoundtrackMatchesArtist(heroTrack, artist.first, artist.second) &&
-                homeArtistPortraitUrlEligible(artist.third)
-        }
-        val preferredSourceRank = matchingPortraits.minOfOrNull { artist ->
-            homeArtistPortraitSourceRank(artist.third)
-        }
-        val preferredPortraits = preferredSourceRank
-            ?.let { rank ->
-                matchingPortraits.filter { artist ->
-                    homeArtistPortraitSourceRank(artist.third) == rank
-                }
-            }
-            .orEmpty()
-        val portraitRotationSeed = "$spotlightDayKey:${state.languageCode}:${heroTrack.id}"
-            .hashCode()
-            .let { hash -> if (hash == Int.MIN_VALUE) 0 else kotlin.math.abs(hash) }
-        val heroPortraitArtist = preferredPortraits
-            .takeIf { it.isNotEmpty() }
-            ?.let { portraits -> portraits[portraitRotationSeed % portraits.size] }
-        val heroArtistName = heroPortraitArtist?.first
-            ?.let(::homeSoundtrackPrimaryArtist)
-            ?.takeIf { it.isNotBlank() }
-            ?: homeSoundtrackPrimaryArtist(heroTrack.artist).takeIf { it.isNotBlank() }
-        val soundtrackArtists = listOfNotNull(heroArtistName)
-        val heroArtistArtworkUrl = heroPortraitArtist?.third
-            .orEmpty()
-            .trim()
-            .let(::highResolutionHomeArtistArtworkUrl)
-        val companions = homeSoundtrackCompanions(
-            tracks = spotlightTracks,
-            artistPool = soundtrackArtistPool,
-            heroArtistName = heroArtistName.orEmpty()
-        )
-        HomeSpotlightHero(candidate, heroArtistArtworkUrl, soundtrackArtists, companions)
+        buildStudioSpotlightHero(spotlightCandidate, spotlightTracks, soundtrackArtistPool, spotlightDayKey, state.languageCode)
     }
     val spotlightHeroData = rememberHomeHeroPortrait(spotlightHeroBase)
     val offlineContent = homeDerivedState.offlineContent
@@ -9430,11 +9387,17 @@ private fun HomeScreen(
                 onPaletteChanged = { _, _ -> },
                 onOpen = {
                     stableSpotlightId = heroTrack.id
-                    when {
-                        heroTrack.id != state.currentTrack?.id ->
-                            viewModel.playFrom(spotlightTracks, heroTrack)
-                        state.isResolving -> Unit
-                        else -> viewModel.togglePlay()
+                    val isYandex = heroTrack.id.startsWith("yandex:") || heroTrack.source == "yandex_music" ||
+                        state.interfaceSettings.activeSource == com.luc4n3x.levyra.feature.source.SourceId.YANDEX
+                    if (isYandex) {
+                        viewModel.startMyWave(heroTrack)
+                    } else {
+                        when {
+                            heroTrack.id != state.currentTrack?.id ->
+                                viewModel.playFrom(spotlightTracks, heroTrack)
+                            state.isResolving -> Unit
+                            else -> viewModel.togglePlay()
+                        }
                     }
                 },
                 header = header,
@@ -10372,13 +10335,21 @@ private fun rememberStudioSpotlight(
     ) {
         buildStudioSoundtrackArtistPool(state)
     }
+    val isYandexActiveSource = state.interfaceSettings.activeSource == com.luc4n3x.levyra.feature.source.SourceId.YANDEX
     val spotlightCandidate = remember(
         spotlightCandidates,
         stableSpotlightId,
         soundtrackArtistPool,
-        state.currentTrack?.id
+        state.currentTrack?.id,
+        isYandexActiveSource
     ) {
-        selectStudioSpotlightCandidate(spotlightCandidates, stableSpotlightId, soundtrackArtistPool, state.currentTrack?.id)
+        selectStudioSpotlightCandidate(
+            spotlightCandidates = spotlightCandidates,
+            stableSpotlightId = stableSpotlightId,
+            soundtrackArtistPool = soundtrackArtistPool,
+            currentTrackId = state.currentTrack?.id,
+            isYandexSource = isYandexActiveSource
+        )
     }
     LaunchedEffect(spotlightDayKey, spotlightCandidate?.track?.id, spotlightCandidates) {
         if (spotlightCandidate != null && stableSpotlightId != spotlightCandidate.track.id) {
@@ -10585,22 +10556,31 @@ private class StudioHomeContext(
         ?.takeIf { (homeStyle == HomeStyle.MaterialExpressive || LevyraSkinManagesLayout) && !studioLayout.isHidden(HomeSectionId.Spotlight) }
         ?.let { hero ->
             val heroTrack = hero.candidate.track
+            val isYandex = heroTrack.id.startsWith("yandex:") || heroTrack.source == "yandex_music" ||
+                state.interfaceSettings.activeSource == com.luc4n3x.levyra.feature.source.SourceId.YANDEX
             StudioHero(
                 track = heroTrack,
                 artistArtworkUrl = hero.artistArtworkUrl,
                 companionArtworkUrls = hero.companionArtworkUrls,
-                label = strings.homeSoundtrackTitle,
-                lead = strings.homeSoundtrackLead(hero.artists),
+                label = if (isYandex) "Моя волна" else strings.homeSoundtrackTitle,
+                lead = if (isYandex) {
+                    if (hero.artists.isNotEmpty()) "Бесконечный поток под ваш вкус · ${hero.artists.joinToString(", ")}"
+                    else "Бесконечный поток музыки под ваш вкус"
+                } else strings.homeSoundtrackLead(hero.artists),
                 isCurrent = heroTrack.id == state.currentTrack?.id,
                 isPlaying = state.isPlaying,
                 isResolving = state.isResolving,
                 animationsEnabled = homeAnimationsEnabled,
                 onOpen = {
                     stableSpotlightId = heroTrack.id
-                    when {
-                        heroTrack.id != state.currentTrack?.id -> viewModel.playFrom(spotlightTracks, heroTrack)
-                        state.isResolving -> Unit
-                        else -> viewModel.togglePlay()
+                    if (isYandex) {
+                        viewModel.startMyWave(heroTrack)
+                    } else {
+                        when {
+                            heroTrack.id != state.currentTrack?.id -> viewModel.playFrom(spotlightTracks, heroTrack)
+                            state.isResolving -> Unit
+                            else -> viewModel.togglePlay()
+                        }
                     }
                 }
             )
@@ -10621,11 +10601,17 @@ private class StudioHomeContext(
                 onPaletteChanged = { _, _ -> },
                 onOpen = {
                     stableSpotlightId = heroTrack.id
-                    when {
-                        heroTrack.id != state.currentTrack?.id ->
-                            viewModel.playFrom(spotlightTracks, heroTrack)
-                        state.isResolving -> Unit
-                        else -> viewModel.togglePlay()
+                    val isYandex = heroTrack.id.startsWith("yandex:") || heroTrack.source == "yandex_music" ||
+                        state.interfaceSettings.activeSource == com.luc4n3x.levyra.feature.source.SourceId.YANDEX
+                    if (isYandex) {
+                        viewModel.startMyWave(heroTrack)
+                    } else {
+                        when {
+                            heroTrack.id != state.currentTrack?.id ->
+                                viewModel.playFrom(spotlightTracks, heroTrack)
+                            state.isResolving -> Unit
+                            else -> viewModel.togglePlay()
+                        }
                     }
                 },
                 header = header,
@@ -10657,24 +10643,32 @@ private fun selectStudioSpotlightCandidate(
     spotlightCandidates: List<HomeSpotlightCandidate>,
     stableSpotlightId: String?,
     soundtrackArtistPool: List<Triple<String, String, String>>,
-    currentTrackId: String?
+    currentTrackId: String?,
+    isYandexSource: Boolean = false
 ): HomeSpotlightCandidate? {
-    fun hasArtistPortrait(candidate: HomeSpotlightCandidate): Boolean {
+    val pool = if (isYandexSource) {
+        val yandexOnly = spotlightCandidates.filter {
+            it.track.id.startsWith("yandex:") || it.track.source == "yandex_music"
+        }
+        if (yandexOnly.isNotEmpty()) yandexOnly else spotlightCandidates
+    } else {
+        spotlightCandidates
+    }
+    fun hasArtwork(candidate: HomeSpotlightCandidate): Boolean {
+        if (candidate.track.id.startsWith("yandex:") || candidate.track.source == "yandex_music") {
+            return candidate.track.thumbnailUrl.isNotBlank() || candidate.track.largeThumbnailUrl.isNotBlank()
+        }
         return soundtrackArtistPool.any { artist ->
             homeSoundtrackMatchesArtist(candidate.track, artist.first, artist.second) &&
                 homeArtistPortraitUrlEligible(artist.third)
         }
     }
-    return spotlightCandidates.firstOrNull {
-        it.track.id == stableSpotlightId && hasArtistPortrait(it)
-    }
-        ?: spotlightCandidates.firstOrNull {
-            it.track.id != currentTrackId && hasArtistPortrait(it)
-        }
-        ?: spotlightCandidates.firstOrNull(::hasArtistPortrait)
-        ?: spotlightCandidates.firstOrNull { it.track.id == stableSpotlightId }
-        ?: spotlightCandidates.firstOrNull { it.track.id != currentTrackId }
-        ?: spotlightCandidates.firstOrNull()
+    return pool.firstOrNull { it.track.id == stableSpotlightId && hasArtwork(it) }
+        ?: pool.firstOrNull { it.track.id != currentTrackId && hasArtwork(it) }
+        ?: pool.firstOrNull(::hasArtwork)
+        ?: pool.firstOrNull { it.track.id == stableSpotlightId }
+        ?: pool.firstOrNull { it.track.id != currentTrackId }
+        ?: pool.firstOrNull()
 }
 
 private fun buildStudioSpotlightHero(
@@ -10686,6 +10680,7 @@ private fun buildStudioSpotlightHero(
 ): HomeSpotlightHero? {
     val candidate = spotlightCandidate ?: return null
     val heroTrack = candidate.track
+    val isYandexTrack = heroTrack.id.startsWith("yandex:") || heroTrack.source == "yandex_music"
     val matchingPortraits = soundtrackArtistPool.filter { artist ->
         homeSoundtrackMatchesArtist(heroTrack, artist.first, artist.second) &&
             homeArtistPortraitUrlEligible(artist.third)
@@ -10711,15 +10706,32 @@ private fun buildStudioSpotlightHero(
         ?.takeIf { it.isNotBlank() }
         ?: homeSoundtrackPrimaryArtist(heroTrack.artist).takeIf { it.isNotBlank() }
     val soundtrackArtists = listOfNotNull(heroArtistName)
-    val heroArtistArtworkUrl = heroPortraitArtist?.third
-        .orEmpty()
-        .trim()
-        .let(::highResolutionHomeArtistArtworkUrl)
-    val companions = homeSoundtrackCompanions(
-        tracks = spotlightTracks,
-        artistPool = soundtrackArtistPool,
-        heroArtistName = heroArtistName.orEmpty()
-    )
+    val heroArtistArtworkUrl = if (isYandexTrack) {
+        heroTrack.largeThumbnailUrl.ifBlank { heroTrack.thumbnailUrl }.let(::highResolutionHomeArtistArtworkUrl)
+    } else {
+        heroPortraitArtist?.third
+            .orEmpty()
+            .trim()
+            .takeIf { it.isNotBlank() }
+            ?.let(::highResolutionHomeArtistArtworkUrl)
+            ?: heroTrack.largeThumbnailUrl.ifBlank { heroTrack.thumbnailUrl }.let(::highResolutionHomeArtistArtworkUrl)
+    }
+    val companions = if (isYandexTrack) {
+        spotlightTracks.asSequence()
+            .filter { it.id != heroTrack.id }
+            .map { it.largeThumbnailUrl.ifBlank { it.thumbnailUrl } }
+            .filter { it.isNotBlank() }
+            .map(::highResolutionHomeArtistArtworkUrl)
+            .distinct()
+            .take(3)
+            .toList()
+    } else {
+        homeSoundtrackCompanions(
+            tracks = spotlightTracks,
+            artistPool = soundtrackArtistPool,
+            heroArtistName = heroArtistName.orEmpty()
+        )
+    }
     return HomeSpotlightHero(candidate, heroArtistArtworkUrl, soundtrackArtists, companions)
 }
 
@@ -12380,6 +12392,11 @@ private fun homeArtistPortraitSourceRank(url: String): Int {
 
 private fun highResolutionHomeArtistArtworkUrl(url: String): String {
     val upgraded = highResolutionPlayerArtworkUrl(url)
+    if (upgraded.contains("avatars.yandex.net/", ignoreCase = true)) {
+        return upgraded.replace("200x200", "800x800")
+            .replace("400x400", "800x800")
+            .replace("%%", "800x800")
+    }
     if (!upgraded.contains("i.scdn.co/", ignoreCase = true)) return upgraded
     return upgraded
         .replace("ab67616100005174", "ab6761610000e5eb", ignoreCase = true)
@@ -12388,6 +12405,10 @@ private fun highResolutionHomeArtistArtworkUrl(url: String): String {
 
 @Composable
 private fun rememberHomeHeroPortrait(hero: HomeSpotlightHero?): HomeSpotlightHero? {
+    val heroTrack = hero?.candidate?.track
+    if (heroTrack != null && (heroTrack.id.startsWith("yandex:") || heroTrack.source == "yandex_music")) {
+        return hero
+    }
     val context = LocalContext.current
     val spotifyRepository = remember(context) { SpotifyArtistArtworkRepository.get(context) }
     val appleRepository = remember(context) { AppleArtistArtworkRepository.get(context) }
@@ -12560,8 +12581,14 @@ private fun HomeEditorialSpotlight(
         animationSpec = if (LocalAnimationsEnabled.current) tween(durationMillis = 420, easing = FastOutSlowInEasing) else snap(),
         label = "homeSpotlightHeroSeed"
     )
-    val soundtrackTitle = strings.homeSoundtrackTitle
-    val soundtrackLead = remember(strings, soundtrackArtists) { strings.homeSoundtrackLead(soundtrackArtists) }
+    val isYandexTrack = track.id.startsWith("yandex:") || track.source == "yandex_music"
+    val soundtrackTitle = if (isYandexTrack) "Моя волна" else strings.homeSoundtrackTitle
+    val soundtrackLead = if (isYandexTrack) {
+        if (soundtrackArtists.isNotEmpty()) "Бесконечный поток под ваш вкус · ${soundtrackArtists.joinToString(", ")}"
+        else "Бесконечный поток музыки под ваш вкус"
+    } else {
+        remember(strings, soundtrackArtists) { strings.homeSoundtrackLead(soundtrackArtists) }
+    }
     val visibleCompanionArtworkUrls = companionArtworkUrls.ifEmpty {
         resolvedArtistArtworkUrl.takeIf(String::isNotBlank)?.let { listOf(it) }.orEmpty()
     }
@@ -12692,7 +12719,7 @@ private fun HomeEditorialSpotlight(
                                     .background(heroTones.badge)
                             )
                             Text(
-                                text = strings.homeSoundtrackRadio,
+                                text = if (isYandexTrack) "МОЯ ВОЛНА" else strings.homeSoundtrackRadio,
                                 color = heroTones.onChip,
                                 style = LevyraType.overline,
                                 maxLines = 1,
