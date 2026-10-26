@@ -9407,45 +9407,56 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     private fun recordPlaybackHistory(track: Track) {
         if (track.title.isBlank() || track.artist.isBlank()) return
         val snapshot = _state.value
-        val artworkDonors = buildList {
-            addAll(snapshot.personalOrbitTracks)
-            addAll(snapshot.recentSearches)
-            addAll(snapshot.charts)
-            addAll(snapshot.homeSections.flatMap { it.tracks })
-            addAll(snapshot.favorites)
-            addAll(snapshot.tracks)
-        }
-        val stableTrack = LevyraPersonalOrbit.prepareForOrbit(track, artworkDonors)
-        val updated = (listOf(stableTrack) + snapshot.recentSearches)
-            .distinctBy { LevyraPersonalOrbit.identityKey(it) }
-            .take(LevyraPersonalOrbit.DISPLAY_LIMIT)
-        val orbit = LevyraPersonalOrbit.build(
-            currentTrack = stableTrack,
-            recentSearches = updated,
-            favorites = snapshot.favorites,
-            tracks = snapshot.tracks,
-            homeSections = snapshot.homeSections,
-            charts = snapshot.charts,
-            cachedOrbit = snapshot.personalOrbitTracks,
-            limit = LevyraPersonalOrbit.DISPLAY_LIMIT,
-            languageCode = snapshot.languageCode,
-            discoveries = smartOrbitDiscoveries,
-            excluded = smartOrbitExclusion()
-        )
-        _state.update { it.copy(recentSearches = updated, personalOrbitTracks = orbit) }
-        val appContext = getApplication<Application>().applicationContext
-        if (LevyraPersonalOrbit.hasAnyArtwork(stableTrack)) {
-            LevyraArtworkCache.preloadPriority(appContext, listOf(stableTrack), 1)
-        }
-        viewModelScope.launch(Dispatchers.IO) {
-            preferences.saveRecentSearches(updated)
-            preferences.savePersonalOrbitTracks(orbit, snapshot.languageCode)
-            if (LevyraPersonalOrbit.hasAnyArtwork(stableTrack)) {
-                LevyraArtworkCache.cachePersistent(appContext, listOf(stableTrack), 1)
+        val discoveries = smartOrbitDiscoveries
+        val excluded = smartOrbitExclusion()
+        // prepareForOrbit + build() normalize and score the whole library and listening history
+        // (a Regex pass per recording); with a large Yandex library this froze the UI thread for
+        // ~5s on every track change. Compute it off-main, then apply the result on the main
+        // dispatcher. (Callers ignore the return value, so deferring the state update is safe.)
+        viewModelScope.launch {
+            val (stableTrack, updated, orbit) = withContext(Dispatchers.Default) {
+                val artworkDonors = buildList {
+                    addAll(snapshot.personalOrbitTracks)
+                    addAll(snapshot.recentSearches)
+                    addAll(snapshot.charts)
+                    addAll(snapshot.homeSections.flatMap { it.tracks })
+                    addAll(snapshot.favorites)
+                    addAll(snapshot.tracks)
+                }
+                val stableTrack = LevyraPersonalOrbit.prepareForOrbit(track, artworkDonors)
+                val updated = (listOf(stableTrack) + snapshot.recentSearches)
+                    .distinctBy { LevyraPersonalOrbit.identityKey(it) }
+                    .take(LevyraPersonalOrbit.DISPLAY_LIMIT)
+                val orbit = LevyraPersonalOrbit.build(
+                    currentTrack = stableTrack,
+                    recentSearches = updated,
+                    favorites = snapshot.favorites,
+                    tracks = snapshot.tracks,
+                    homeSections = snapshot.homeSections,
+                    charts = snapshot.charts,
+                    cachedOrbit = snapshot.personalOrbitTracks,
+                    limit = LevyraPersonalOrbit.DISPLAY_LIMIT,
+                    languageCode = snapshot.languageCode,
+                    discoveries = discoveries,
+                    excluded = excluded
+                )
+                Triple(stableTrack, updated, orbit)
             }
-        }
-        if (needsOfficialMetadata(stableTrack)) {
-            refreshOfficialOrbitArtwork(stableTrack)
+            _state.update { it.copy(recentSearches = updated, personalOrbitTracks = orbit) }
+            val appContext = getApplication<Application>().applicationContext
+            if (LevyraPersonalOrbit.hasAnyArtwork(stableTrack)) {
+                LevyraArtworkCache.preloadPriority(appContext, listOf(stableTrack), 1)
+            }
+            viewModelScope.launch(Dispatchers.IO) {
+                preferences.saveRecentSearches(updated)
+                preferences.savePersonalOrbitTracks(orbit, snapshot.languageCode)
+                if (LevyraPersonalOrbit.hasAnyArtwork(stableTrack)) {
+                    LevyraArtworkCache.cachePersistent(appContext, listOf(stableTrack), 1)
+                }
+            }
+            if (needsOfficialMetadata(stableTrack)) {
+                refreshOfficialOrbitArtwork(stableTrack)
+            }
         }
     }
 
