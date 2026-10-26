@@ -9,7 +9,8 @@ package com.luc4n3x.levyra.feature.source
  */
 enum class SourceId(val label: String) {
     YOUTUBE("YouTube Music"),
-    YANDEX("Яндекс Музыка");
+    YANDEX("Яндекс Музыка"),
+    SOUNDCLOUD("SoundCloud");
 
     companion object {
         /** Case-insensitive name lookup; null, blank or unrecognized input resolves to [YOUTUBE]. */

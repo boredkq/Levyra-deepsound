@@ -22,6 +22,9 @@ import com.luc4n3x.levyra.data.hqaudio.HighQualityProviderHttpClient
 import com.luc4n3x.levyra.data.hqaudio.OkHttpProviderExchange
 import com.luc4n3x.levyra.data.hqaudio.SharedPreferencesMappingStorage
 import com.luc4n3x.levyra.data.hqaudio.jiosaavn.JioSaavnAudioProvider
+import com.luc4n3x.levyra.data.soundcloud.SoundCloudAudioProvider
+import com.luc4n3x.levyra.data.soundcloud.SoundCloudClient
+import com.luc4n3x.levyra.data.soundcloud.SoundCloudSessionStore
 import com.luc4n3x.levyra.data.yandex.YandexMusicAudioProvider
 import com.luc4n3x.levyra.data.yandex.YandexMusicClient
 import com.luc4n3x.levyra.data.yandex.YandexMusicSessionStore
@@ -398,12 +401,19 @@ class PlaybackResolver private constructor(private val context: Context) {
             sessionStore = YandexMusicSessionStore.getInstance(context)
         )
     }
+    private val soundCloudAudioProvider by lazy {
+        SoundCloudAudioProvider(
+            client = SoundCloudClient(),
+            sessionStore = SoundCloudSessionStore.getInstance(context)
+        )
+    }
     private val highQualityPlayback = HighQualityPlaybackCoordinator(
         HighQualityAudioResolver(
             provider = CompositeHighQualityAudioProvider(
                 listOf(
                     JioSaavnAudioProvider(OkHttpProviderExchange(HighQualityProviderHttpClient::client)),
-                    yandexMusicAudioProvider
+                    yandexMusicAudioProvider,
+                    soundCloudAudioProvider
                 )
             ),
             mappingStore = HighQualityMappingStore(SharedPreferencesMappingStorage(context)),

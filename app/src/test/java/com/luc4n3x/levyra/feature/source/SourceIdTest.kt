@@ -9,6 +9,8 @@ class SourceIdTest {
     fun from_knownName_returnsEnum() {
         assertEquals(SourceId.YANDEX, SourceId.from("YANDEX"))
         assertEquals(SourceId.YANDEX, SourceId.from("yandex"))
+        assertEquals(SourceId.SOUNDCLOUD, SourceId.from("SOUNDCLOUD"))
+        assertEquals(SourceId.SOUNDCLOUD, SourceId.from("soundcloud"))
         assertEquals(SourceId.YOUTUBE, SourceId.from("YOUTUBE"))
     }
 

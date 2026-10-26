@@ -38,8 +38,20 @@ class ProviderRouterActiveSourceTest {
         assertEquals("yt:song", result.songs.single().id)
     }
 
+    @Test
+    fun activeSoundCloud_returnsSoundCloudResults() = runBlocking {
+        val router = LevyraProviderRouter(
+            catalogProviders = listOf(youtubeCatalog(), yandexCatalog(), soundCloudCatalog()),
+            playbackProviders = emptyList(),
+            activeSource = { SourceId.SOUNDCLOUD }
+        )
+        val result = router.searchEverything("q", "en")
+        assertEquals("soundcloud:song", result.songs.single().id)
+    }
+
     private fun youtubeCatalog() = catalog(SourceId.YOUTUBE, "yt:song")
     private fun yandexCatalog() = catalog(SourceId.YANDEX, "yandex:song")
+    private fun soundCloudCatalog() = catalog(SourceId.SOUNDCLOUD, "soundcloud:song")
 
     private fun catalog(source: SourceId, songId: String) = object : LevyraCatalogProvider {
         override val id = source.name.lowercase()

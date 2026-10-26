@@ -20696,18 +20696,22 @@ private fun SettingsOverlay(
                             sources.forEachIndexed { index, source ->
                                 item(key = "music-source-${source.name}") {
                                     SettingsSourceOption(
-                                        icon = if (source == com.luc4n3x.levyra.feature.source.SourceId.YANDEX) {
-                                            Icons.Rounded.GraphicEq
-                                        } else {
-                                            Icons.Rounded.AccountCircle
+                                        icon = when (source) {
+                                            com.luc4n3x.levyra.feature.source.SourceId.YANDEX -> Icons.Rounded.GraphicEq
+                                            com.luc4n3x.levyra.feature.source.SourceId.SOUNDCLOUD -> Icons.Rounded.Cloud
+                                            else -> Icons.Rounded.AccountCircle
                                         },
                                         title = source.label,
-                                        subtitle = if (source == com.luc4n3x.levyra.feature.source.SourceId.YANDEX) {
-                                            "Моя волна, библиотека, поиск Яндекса"
-                                        } else {
-                                            "Поиск, чарты и радио YouTube"
+                                        subtitle = when (source) {
+                                            com.luc4n3x.levyra.feature.source.SourceId.YANDEX -> "Моя волна, библиотека, поиск Яндекса"
+                                            com.luc4n3x.levyra.feature.source.SourceId.SOUNDCLOUD -> "Поиск треков, радио и потоки SoundCloud"
+                                            else -> "Поиск, чарты и радио YouTube"
                                         },
-                                        accent = if (source == com.luc4n3x.levyra.feature.source.SourceId.YANDEX) LevyraCyan else LevyraPink,
+                                        accent = when (source) {
+                                            com.luc4n3x.levyra.feature.source.SourceId.YANDEX -> LevyraCyan
+                                            com.luc4n3x.levyra.feature.source.SourceId.SOUNDCLOUD -> Color(0xFFFF5500)
+                                            else -> LevyraPink
+                                        },
                                         selected = interfaceSettings.activeSource == source,
                                         groupIndex = index,
                                         groupCount = sources.size,

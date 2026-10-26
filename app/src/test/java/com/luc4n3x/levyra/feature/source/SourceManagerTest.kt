@@ -57,6 +57,16 @@ class SourceManagerTest {
         assertSame(youtube, m.active())
     }
 
+    @Test
+    fun switch_toSoundCloud_emitsSoundCloud() {
+        val m = SourceManager(
+            listOf(fakeSource(SourceId.YOUTUBE), fakeSource(SourceId.YANDEX), fakeSource(SourceId.SOUNDCLOUD))
+        )
+        m.switch(SourceId.SOUNDCLOUD)
+        assertEquals(SourceId.SOUNDCLOUD, m.activeId.value)
+        assertEquals(SourceId.SOUNDCLOUD, m.active().id)
+    }
+
     private fun fakeSource(sid: SourceId): MusicSource = object : MusicSource {
         override val id = sid
         override fun capabilities(): Set<SourceCapability> = emptySet()

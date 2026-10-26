@@ -22,6 +22,7 @@ import com.luc4n3x.levyra.data.yandex.YandexMusicClient
 import com.luc4n3x.levyra.data.yandex.YandexMusicSessionStore
 import com.luc4n3x.levyra.data.soundcloud.SoundCloudAudioProvider
 import com.luc4n3x.levyra.data.soundcloud.SoundCloudClient
+import com.luc4n3x.levyra.data.soundcloud.SoundCloudSessionStore
 import com.luc4n3x.levyra.data.collections.isPersonalCollectionTrack
 import com.luc4n3x.levyra.data.ArtistRepository
 import com.luc4n3x.levyra.data.ChartsRepository
@@ -909,7 +910,8 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     }
     private val soundCloudProvider by lazy {
         SoundCloudAudioProvider(
-            client = SoundCloudClient()
+            client = SoundCloudClient(),
+            sessionStore = SoundCloudSessionStore.getInstance(application.applicationContext)
         )
     }
     private val providerRouter = LevyraProviderRouter(
@@ -5332,6 +5334,18 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 emptyList()
             }
         }
+        if (_state.value.interfaceSettings.activeSource ==
+            com.luc4n3x.levyra.feature.source.SourceId.SOUNDCLOUD
+        ) {
+            return try {
+                soundCloudProvider.loadHomeSections()
+            } catch (error: CancellationException) {
+                throw error
+            } catch (error: Exception) {
+                Timber.w(error, "SoundCloud home feed refresh failed")
+                emptyList()
+            }
+        }
         return try {
             repository.homeFeed(languageCode)
         } catch (error: CancellationException) {
@@ -5993,6 +6007,25 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                     }
                     refreshForgottenFavorites()
                 }
+                com.luc4n3x.levyra.feature.source.SourceId.SOUNDCLOUD -> {
+                    val library = runCatching { soundCloudProvider.loadLibrary() }
+                        .getOrDefault(com.luc4n3x.levyra.feature.source.SourceLibrary())
+                    if (_state.value.interfaceSettings.activeSource !=
+                        com.luc4n3x.levyra.feature.source.SourceId.SOUNDCLOUD
+                    ) {
+                        return@launch
+                    }
+                    _state.update {
+                        it.copy(
+                            favorites = library.favorites,
+                            favoriteIds = library.favorites.map { track -> track.id }.toSet(),
+                            favoriteTimestamps = emptyMap(),
+                            playlists = library.playlists,
+                            playlistTags = emptyList()
+                        )
+                    }
+                    refreshForgottenFavorites()
+                }
                 com.luc4n3x.levyra.feature.source.SourceId.YOUTUBE -> {
                     val favorites = withContext(Dispatchers.IO) { favoritesStore.load() }
                     val favoriteTimestamps = withContext(Dispatchers.IO) {
@@ -6385,11 +6418,11 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         }
         localLibrarySortFlow.value =
             snapshot.interfaceSettings.librarySort to snapshot.interfaceSettings.librarySortDirection
-        if (snapshot.interfaceSettings.activeSource ==
-            com.luc4n3x.levyra.feature.source.SourceId.YANDEX
+        if (snapshot.interfaceSettings.activeSource !=
+            com.luc4n3x.levyra.feature.source.SourceId.YOUTUBE
         ) {
-            // Restored with Yandex active: swap the local library just loaded above for Yandex's.
-            onActiveSourceChanged(com.luc4n3x.levyra.feature.source.SourceId.YANDEX)
+            // Restored with non-YouTube source active: swap the local library just loaded above.
+            onActiveSourceChanged(snapshot.interfaceSettings.activeSource)
         }
         LevyraTypographyController.apply(snapshot.interfaceSettings.fontPreset)
         applyLanguageContent(snapshot.languageCode, refreshRemote = true)
@@ -12979,6 +13012,17 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                     .takeIf { it.startsWith("yandex:") || request.seed.source == "yandex_music" }
                     ?.removePrefix("yandex:")
                 yandexMusicProvider.radioTracks(
+                    seedTrackId = seedId,
+                    excludeIds = request.session?.addedIds.orEmpty(),
+                    limit = fetchLimit
+                )
+            } else if (_state.value.interfaceSettings.activeSource ==
+                com.luc4n3x.levyra.feature.source.SourceId.SOUNDCLOUD
+            ) {
+                val seedId = request.seed.id
+                    .takeIf { it.startsWith("soundcloud:") || request.seed.source == "soundcloud" }
+                    ?.removePrefix("soundcloud:")
+                soundCloudProvider.radioTracks(
                     seedTrackId = seedId,
                     excludeIds = request.session?.addedIds.orEmpty(),
                     limit = fetchLimit

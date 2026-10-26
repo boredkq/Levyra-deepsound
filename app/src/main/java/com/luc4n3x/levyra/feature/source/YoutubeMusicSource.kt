@@ -20,7 +20,8 @@ internal class YoutubeMusicSource(
     override fun capabilities(): Set<SourceCapability> = SourceCapability.entries.toSet()
 
     override fun owns(track: Track): Boolean =
-        track.source != YANDEX_SOURCE && !track.id.startsWith(YANDEX_ID_PREFIX)
+        track.source != YANDEX_SOURCE && !track.id.startsWith(YANDEX_ID_PREFIX) &&
+        track.source != SOUNDCLOUD_SOURCE && !track.id.startsWith(SOUNDCLOUD_ID_PREFIX)
 
     override suspend fun search(query: String, languageCode: String): SearchResults =
         catalog.searchEverything(query, languageCode)
@@ -34,5 +35,7 @@ internal class YoutubeMusicSource(
     private companion object {
         const val YANDEX_SOURCE = "yandex_music"
         const val YANDEX_ID_PREFIX = "yandex:"
+        const val SOUNDCLOUD_SOURCE = "soundcloud"
+        const val SOUNDCLOUD_ID_PREFIX = "soundcloud:"
     }
 }

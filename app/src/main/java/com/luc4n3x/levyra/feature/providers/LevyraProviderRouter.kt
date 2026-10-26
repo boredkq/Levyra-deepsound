@@ -26,6 +26,10 @@ internal const val DEFAULT_OFFLINE_PROVIDER_TIMEOUT_MS = 62_000L
 internal fun isYandexOriginTrack(track: Track): Boolean =
     track.source == "yandex_music" || track.id.startsWith("yandex:")
 
+/** A track belongs to SoundCloud when its source or id namespace marks it so. */
+internal fun isSoundCloudOriginTrack(track: Track): Boolean =
+    track.source == "soundcloud" || track.id.startsWith("soundcloud:")
+
 interface LevyraCatalogProvider {
     val id: String
     val priority: Int
@@ -213,8 +217,8 @@ class LevyraNativePlaybackProvider(
     override val id: String = "levyra_native"
     override val priority: Int = 10
 
-    // The YouTube/native resolver must not attempt Yandex-origin tracks.
-    override fun owns(track: Track): Boolean = !isYandexOriginTrack(track)
+    // The YouTube/native resolver must not attempt Yandex- or SoundCloud-origin tracks.
+    override fun owns(track: Track): Boolean = !isYandexOriginTrack(track) && !isSoundCloudOriginTrack(track)
 
     override suspend fun resolve(track: Track, videoMode: Boolean): Track {
         return resolver.resolve(track, videoMode)
