@@ -9191,7 +9191,12 @@ private fun HomeScreen(
     val quickPicks = homeDerivedState.quickPicks
     val newReleases = homeDerivedState.newReleases
     val forgottenFavorites = state.forgottenFavorites
-    val homeAlbums = remember(
+    // Building the personalized album shelf scans the whole favorites list; for a large (Yandex)
+    // library that is too heavy for the main thread and used to re-run on every played track
+    // (recentListens key), freezing the UI for ~1s on track change. Compute off-main and keep the
+    // previous result until the new one is ready.
+    var homeAlbums by remember { mutableStateOf<List<AlbumHit>>(emptyList()) }
+    LaunchedEffect(
         state.homeAlbums,
         state.personalOrbitTracks,
         state.recentListens,
@@ -9203,17 +9208,19 @@ private fun HomeScreen(
         state.tracks,
         state.languageCode
     ) {
-        buildPersonalizedHomeAlbumShelf(
-            primaryAlbums = state.homeAlbums,
-            personalTracks = state.personalOrbitTracks,
-            recentTracks = state.recentListens,
-            favoriteTracks = state.favorites,
-            quickPickTracks = quickPicks?.tracks.orEmpty(),
-            localizedReleaseTracks = newReleases?.tracks.orEmpty(),
-            localizedSections = state.homeSections,
-            chartTracks = state.charts,
-            fallbackTracks = state.tracks
-        )
+        homeAlbums = withContext(Dispatchers.Default) {
+            buildPersonalizedHomeAlbumShelf(
+                primaryAlbums = state.homeAlbums,
+                personalTracks = state.personalOrbitTracks,
+                recentTracks = state.recentListens,
+                favoriteTracks = state.favorites,
+                quickPickTracks = quickPicks?.tracks.orEmpty(),
+                localizedReleaseTracks = newReleases?.tracks.orEmpty(),
+                localizedSections = state.homeSections,
+                chartTracks = state.charts,
+                fallbackTracks = state.tracks
+            )
+        }
     }
     val rawOtherSections = homeDerivedState.otherSections
     val freshHomeVideoTracks = remember(state.exploreVideos, rawOtherSections, state.charts, strings.exploreNewVideos) {
@@ -10143,7 +10150,12 @@ private fun StudioHomeScreen(
     val quickPicks = homeDerivedState.quickPicks
     val newReleases = homeDerivedState.newReleases
     val forgottenFavorites = state.forgottenFavorites
-    val homeAlbums = remember(
+    // Building the personalized album shelf scans the whole favorites list; for a large (Yandex)
+    // library that is too heavy for the main thread and used to re-run on every played track
+    // (recentListens key), freezing the UI for ~1s on track change. Compute off-main and keep the
+    // previous result until the new one is ready.
+    var homeAlbums by remember { mutableStateOf<List<AlbumHit>>(emptyList()) }
+    LaunchedEffect(
         state.homeAlbums,
         state.personalOrbitTracks,
         state.recentListens,
@@ -10155,17 +10167,19 @@ private fun StudioHomeScreen(
         state.tracks,
         state.languageCode
     ) {
-        buildPersonalizedHomeAlbumShelf(
-            primaryAlbums = state.homeAlbums,
-            personalTracks = state.personalOrbitTracks,
-            recentTracks = state.recentListens,
-            favoriteTracks = state.favorites,
-            quickPickTracks = quickPicks?.tracks.orEmpty(),
-            localizedReleaseTracks = newReleases?.tracks.orEmpty(),
-            localizedSections = state.homeSections,
-            chartTracks = state.charts,
-            fallbackTracks = state.tracks
-        )
+        homeAlbums = withContext(Dispatchers.Default) {
+            buildPersonalizedHomeAlbumShelf(
+                primaryAlbums = state.homeAlbums,
+                personalTracks = state.personalOrbitTracks,
+                recentTracks = state.recentListens,
+                favoriteTracks = state.favorites,
+                quickPickTracks = quickPicks?.tracks.orEmpty(),
+                localizedReleaseTracks = newReleases?.tracks.orEmpty(),
+                localizedSections = state.homeSections,
+                chartTracks = state.charts,
+                fallbackTracks = state.tracks
+            )
+        }
     }
     val rawOtherSections = homeDerivedState.otherSections
     val (homeVideoTracks, otherSections) = rememberStudioHomeVideo(state, rawOtherSections, strings)
@@ -15347,20 +15361,27 @@ private fun SearchScreen(viewModel: SearchViewModel, state: LevyraUiState, onTra
     var addTarget by remember { mutableStateOf<Track?>(null) }
     var batchAddTargets by remember { mutableStateOf<List<Track>>(emptyList()) }
     val selection = rememberTrackSelectionState()
-    val personalized = remember(
+    // Scans the whole favorites list; for a large (Yandex) library this froze track changes
+    // (recentListens key) on the main thread. Compute off-main, keep the previous snapshot.
+    var personalized by remember {
+        mutableStateOf(com.luc4n3x.levyra.feature.search.PersonalizedSearchSnapshot())
+    }
+    LaunchedEffect(
         state.favorites,
         state.recentListens,
         state.recentSearches,
         state.personalOrbitTracks,
         state.smartProfile.topArtists
     ) {
-        buildPersonalizedSearchSnapshot(
-            favorites = state.favorites,
-            recentListens = state.recentListens,
-            recentSearches = state.recentSearches,
-            personalOrbitTracks = state.personalOrbitTracks,
-            topArtists = state.smartProfile.topArtists
-        )
+        personalized = withContext(Dispatchers.Default) {
+            buildPersonalizedSearchSnapshot(
+                favorites = state.favorites,
+                recentListens = state.recentListens,
+                recentSearches = state.recentSearches,
+                personalOrbitTracks = state.personalOrbitTracks,
+                topArtists = state.smartProfile.topArtists
+            )
+        }
     }
     val personalizedCopy = personalizedSearchCopy(state.languageCode)
     val personalizedArtists = remember(state.homeArtists, personalized.artistNames) {
