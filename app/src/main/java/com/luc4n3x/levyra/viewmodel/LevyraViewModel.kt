@@ -1680,7 +1680,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         observeJamState()
         observeSimilarSongsSeed()
         observeConnectivity()
-        val startupSource = startupInterfaceSettings.activeSource
+        val startupSource = startupSettings.interfaceSettings.activeSource
         val favorites = favoritesStore.load(startupSource)
         val favoriteTimestamps = favoritesStore.loadTimestamps(startupSource)
         val settings = startupSettings
