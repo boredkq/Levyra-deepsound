@@ -35,4 +35,3 @@ desktop/macos-test/Levyra.app/
 # Third-party installed agent skills
 .agents/skills/*/
 !.agents/skills/levyra-*/
-

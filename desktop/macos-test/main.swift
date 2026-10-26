@@ -27,7 +27,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
 
         let config = WKWebViewConfiguration()
         config.preferences.setValue(true, forKey: "allowFileAccessFromFileURLs")
-        
+
         webView = WKWebView(frame: rect, configuration: config)
         webView.autoresizingMask = [.width, .height]
         webView.setValue(false, forKey: "drawsBackground")
@@ -49,7 +49,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
                 htmlUrl = URL(fileURLWithPath: currentDir).appendingPathComponent("index.html")
             }
         }
-        
+
         if let url = htmlUrl, FileManager.default.fileExists(atPath: url.path) {
             webView.loadFileURL(url, allowingReadAccessTo: url.deletingLastPathComponent())
         }
@@ -61,13 +61,13 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     func setupShortcuts() {
         NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
             guard let self = self else { return event }
-            
+
             // Space for Play/Pause (when not typing in an input)
             if event.keyCode == 49 && event.modifierFlags.intersection(.deviceIndependentFlagsMask).isEmpty {
                 self.webView.evaluateJavaScript("if (document.activeElement.tagName !== 'INPUT') { togglePlayState(); }")
                 return nil
             }
-            
+
             // Cmd + K for Search
             if event.modifierFlags.contains(.command) && event.charactersIgnoringModifiers == "k" {
                 self.webView.evaluateJavaScript("switchView('home'); document.querySelector('input')?.focus();")
@@ -88,7 +88,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         let mainMenu = NSMenu()
         let appMenuItem = NSMenuItem()
         mainMenu.addItem(appMenuItem)
-        
+
         let appMenu = NSMenu()
         appMenu.addItem(withTitle: "О программе Levyra Desktop", action: #selector(NSApplication.orderFrontStandardAboutPanel(_:)), keyEquivalent: "")
         appMenu.addItem(NSMenuItem.separator())

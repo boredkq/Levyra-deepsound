@@ -153,7 +153,7 @@
     <!-- 1.1 Левый сайдбар (240 px) -->
     <g transform="translate(14, 54)">
       <rect width="232" height="870" rx="20" fill="#0D121F" fill-opacity="0.9" stroke="url(#glass-stroke)" stroke-width="1"/>
-      
+
       <!-- Brand & Source Switcher -->
       <g transform="translate(18, 20)">
         <rect width="32" height="32" rx="9" fill="url(#theme-cosmic)"/>
@@ -173,7 +173,7 @@
 
       <!-- Меню -->
       <text x="20" y="132" fill="#586576" font-size="10" font-weight="700" letter-spacing="0.5">НАВИГАЦИЯ</text>
-      
+
       <!-- Active Item: Главная -->
       <g transform="translate(14, 142)">
         <rect width="204" height="36" rx="12" fill="#00E5FF" fill-opacity="0.14" stroke="#00E5FF" stroke-opacity="0.35"/>
@@ -301,7 +301,7 @@
       <!-- Track List (Чарты и треки) -->
       <g transform="translate(0, 348)">
         <text x="0" y="16" fill="#FFFFFF" font-size="16" font-weight="700">Популярное сейчас • Топ треки</text>
-        
+
         <!-- Track Row 1 (Playing) -->
         <g transform="translate(0, 32)">
           <rect width="940" height="52" rx="12" fill="#00E5FF" fill-opacity="0.1" stroke="#00E5FF" stroke-opacity="0.3"/>
@@ -380,7 +380,7 @@
       <rect x="190" y="24" width="92" height="18" rx="9" fill="#FFCC00" fill-opacity="0.18"/>
       <text x="198" y="36" fill="#FFCC00" font-size="9" font-weight="800">ЯНДЕКС 320k</text>
       <text x="294" y="38" fill="#FF5252" font-size="16">❤️</text>
-      
+
       <!-- Transport controls -->
       <g transform="translate(490, 16)">
         <text x="40" y="26" fill="#8E9AA8" font-size="16">🔀</text>
@@ -505,7 +505,7 @@
     <g transform="translate(24, 240)">
       <rect width="1432" height="160" rx="16" fill="#101524" stroke="url(#glass-stroke)" stroke-width="1"/>
       <text x="24" y="32" fill="#FFFFFF" font-size="14" font-weight="700">Параметры кастомизации темы</text>
-      
+
       <!-- Slider 1: Blur Level -->
       <g transform="translate(24, 56)">
         <text y="14" fill="#8E9AA8" font-size="12">Размытие стекла (Backdrop Glass Blur):</text>
@@ -671,7 +671,7 @@
     <!-- Shapes Application Showcase in UI Elements -->
     <g transform="translate(30, 430)">
       <text x="0" y="0" fill="#FFFFFF" font-size="15" font-weight="700">Примеры применения выбранной геометрии в компонентах UI:</text>
-      
+
       <!-- Buttons Row -->
       <g transform="translate(0, 20)">
         <rect width="180" height="42" rx="14" fill="url(#theme-cosmic)" filter="url(#glow-cyan)"/>
@@ -708,7 +708,7 @@
     <!-- Synchronized Live Lyrics Box -->
     <g transform="translate(30, 80)">
       <rect width="520" height="820" rx="20" fill="#101524" fill-opacity="0.8" stroke="url(#glass-stroke)" stroke-width="1.2"/>
-      
+
       <!-- Header -->
       <g transform="translate(24, 24)">
         <text x="0" y="0" fill="#FF4081" font-size="11" font-weight="800">LRC SYNCHRONIZED STREAM</text>
@@ -740,13 +740,13 @@
     <!-- Shareable Lyrics Quote Card (Карточка цитаты для соцсетей) -->
     <g transform="translate(580, 80)">
       <text x="0" y="0" fill="#FFFFFF" font-size="14" font-weight="700">Генератор карточки цитаты (Share Quote Card):</text>
-      
+
       <!-- Card Preview -->
       <g transform="translate(0, 20)">
         <rect width="380" height="480" rx="22" fill="url(#theme-aura)" filter="url(#shadow-heavy)"/>
         <!-- Inner Overlay for Readability -->
         <rect width="380" height="480" rx="22" fill="#000000" fill-opacity="0.35"/>
-        
+
         <!-- Album Header on Card -->
         <rect x="24" y="24" width="48" height="48" rx="12" fill="#FFFFFF" fill-opacity="0.2"/>
         <text x="82" y="44" fill="#FFFFFF" font-size="14" font-weight="800">Смех</text>
@@ -793,12 +793,12 @@
       <text x="32" y="47" fill="#000" font-size="18" font-weight="900">Я</text>
       <text x="72" y="36" fill="#FFFFFF" font-size="16" font-weight="800">Яндекс Музыка (Yandex Music)</text>
       <text x="72" y="54" fill="#00E676" font-size="11" font-weight="700">● Авторизован через ya.ru/device • Подписка Яндекс Плюс активна</text>
-      
+
       <!-- Key Features Badge -->
       <g transform="translate(72, 74)">
         <rect width="140" height="24" rx="6" fill="#FFFFFF" fill-opacity="0.06"/>
         <text x="12" y="16" fill="#D0D7DE" font-size="11">Качество: 320 kbps MP3</text>
-        
+
         <rect x="150" width="160" height="24" rx="6" fill="#FFFFFF" fill-opacity="0.06"/>
         <text x="162" y="16" fill="#D0D7DE" font-size="11">Синхронизация лайков ✓</text>
 
@@ -819,12 +819,12 @@
       <text x="30" y="46" fill="#FFF" font-size="14" font-weight="900">☁️</text>
       <text x="72" y="36" fill="#FFFFFF" font-size="16" font-weight="800">SoundCloud Integration</text>
       <text x="72" y="54" fill="#00E676" font-size="11" font-weight="700">● Client ID получен автоматически • Ремиксы и DJ сеты доступны</text>
-      
+
       <!-- Key Features Badge -->
       <g transform="translate(72, 74)">
         <rect width="180" height="24" rx="6" fill="#FFFFFF" fill-opacity="0.06"/>
         <text x="12" y="16" fill="#D0D7DE" font-size="11">Потоки HLS / Progressive MP3</text>
-        
+
         <rect x="190" width="170" height="24" rx="6" fill="#FFFFFF" fill-opacity="0.06"/>
         <text x="202" y="16" fill="#D0D7DE" font-size="11">Сохранение в Room DB ✓</text>
 

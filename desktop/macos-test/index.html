@@ -171,7 +171,7 @@
       <!-- Left Sidebar (Navigation & Multi-Sources) -->
       <aside class="w-64 border-r border-[var(--levyra-border)] bg-black/20 flex flex-col justify-between p-4 select-none shrink-0">
         <div class="space-y-6">
-          
+
           <!-- Brand Logo -->
           <div class="flex items-center space-x-3 px-2">
             <div class="w-10 h-10 flex items-center justify-center font-black text-white text-lg shadow-lg" style="border-radius: var(--levyra-button-radius); background: linear-gradient(135deg, var(--levyra-accent), var(--levyra-accent-secondary)); box-shadow: 0 4px 20px var(--levyra-accent-glow);">
@@ -195,7 +195,7 @@
           <!-- Navigation Links -->
           <div class="space-y-1">
             <div class="text-xs font-bold text-slate-500 uppercase tracking-wider px-2 mb-2">Навигация</div>
-            
+
             <a href="#" onclick="switchView('home')" class="flex items-center space-x-3 px-3 py-2.5 text-xs font-bold text-white transition-all bg-white/10" style="border-radius: var(--levyra-button-radius);">
               <svg class="w-4 h-4 text-[var(--levyra-accent)]" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>
               <span>Главная</span>
@@ -270,10 +270,10 @@
 
         <!-- VIEW 1: HOME SCREEN (DEFAULT) -->
         <div id="view-home" class="space-y-6 transition-all duration-300">
-          
+
           <!-- Hero Section: Интерактивная «Моя волна» -->
           <div class="relative overflow-hidden p-6 border border-white/10 shadow-2xl transition-all duration-500" style="border-radius: var(--levyra-radius); background: linear-gradient(135deg, rgba(2, 48, 71, 0.9), rgba(27, 16, 56, 0.95), rgba(54, 12, 56, 0.9));">
-            
+
             <!-- Vinyl Disk with Rotating Rotor Art -->
             <div class="flex flex-col md:flex-row items-center gap-6">
               <div class="relative w-36 h-36 shrink-0 cursor-pointer group" onclick="togglePlayState()">
@@ -394,7 +394,7 @@
           <!-- Data-Dense Track Table -->
           <div class="space-y-3">
             <h3 class="text-base font-extrabold text-white">Сейчас слушают • Топ треки</h3>
-            
+
             <div class="bg-black/20 border border-white/10 divide-y divide-white/5 overflow-hidden" style="border-radius: var(--levyra-radius);">
               <!-- Track Row 1 (Playing) -->
               <div class="p-3.5 flex items-center justify-between hover:bg-white/5 transition cursor-pointer" onclick="playTrack('Смех', 'Дайте танк (!)', 'from-red-500 to-amber-500', 'Яндекс • 320k')">
@@ -634,7 +634,7 @@
 
     <!-- Persistent Floating Player Dock -->
     <div id="player-dock" class="absolute bottom-4 left-6 right-6 p-3.5 bg-black/85 backdrop-blur-2xl border border-white/15 rounded-2xl shadow-[0_15px_35px_rgba(0,0,0,0.8)] flex items-center justify-between z-30 transition-all duration-300">
-      
+
       <!-- Track Details -->
       <div class="flex items-center space-x-3.5 w-1/4">
         <div id="player-cover" class="w-12 h-12 rounded-xl bg-gradient-to-tr from-red-500 to-amber-500 shadow-md shrink-0 transition-transform"></div>
@@ -752,7 +752,7 @@
 
       document.getElementById('orb-1').style.background = `radial-gradient(circle, ${primary}, transparent 70%)`;
       document.getElementById('orb-2').style.background = `radial-gradient(circle, ${secondary}, transparent 70%)`;
-      
+
       // Update active tab highlight
       document.getElementById('tab-btn-home').style.background = primary;
     }

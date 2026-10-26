@@ -4,6 +4,7 @@ on:
   pull_request:
     paths:
       - "desktop/**"
+      - "!desktop/macos-test/**"
       - "third_party/LevyraExtractor/**"
       - ".github/workflows/desktop-windows.yml"
   push:
@@ -12,6 +13,7 @@ on:
       - master
     paths:
       - "desktop/**"
+      - "!desktop/macos-test/**"
       - "third_party/LevyraExtractor/**"
       - ".github/workflows/desktop-windows.yml"
   workflow_dispatch:
