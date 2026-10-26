@@ -2308,11 +2308,13 @@ fun LevyraApp(
                 }
             }
             val onExpansionDragStart: () -> Unit = {
+                viewModel.notifyPlaybackUiInteraction()
                 expansionDragStart = playerExpansion.value
                 expansionDragAccum = 0f
                 expansionDragGeneration += 1
             }
             val onExpansionDrag: (Float) -> Unit = { delta ->
+                viewModel.notifyPlaybackUiInteraction()
                 expansionDragAccum += delta
                 val generation = expansionDragGeneration
                 expansionScope.launch {
@@ -2328,6 +2330,7 @@ fun LevyraApp(
                 }
             }
             val settleExpansion: (Float, Boolean) -> Unit = { velocity, wasExpanded ->
+                viewModel.notifyPlaybackUiInteraction()
                 expansionDragGeneration += 1
                 val target = resolvePlayerExpansionTarget(playerExpansion.value, velocity, wasExpanded)
                 expansionScope.launch {

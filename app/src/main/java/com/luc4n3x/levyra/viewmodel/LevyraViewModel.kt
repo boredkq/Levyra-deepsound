@@ -10104,6 +10104,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
 
     fun playFrom(list: List<Track>, track: Track, loopOnCompletion: Boolean = false) {
         if (list.isEmpty()) return
+        notifyPlaybackUiInteraction()
         if (_state.value.jam.role == JamRole.Guest) {
             play(track)
             return
@@ -13427,6 +13428,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     fun next() {
+        notifyPlaybackUiInteraction()
         if (routeJamAction(JamAction.Next)) return
         nextLocal()
     }
@@ -13442,6 +13444,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     fun previous() {
+        notifyPlaybackUiInteraction()
         if (routeJamAction(JamAction.Previous)) return
         previousLocal()
     }
@@ -13575,6 +13578,18 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         }
     }
 
+    @Volatile
+    private var suppressPositionPublishUntilMs = 0L
+
+    /**
+     * Called by the UI while a player animation/gesture is running (mini-player expand, track
+     * swipe). Opens a short window during which the ticker skips position-only UI publishes, so the
+     * animation runs without the heavy player tree recomposing mid-frame. Self-clearing.
+     */
+    fun notifyPlaybackUiInteraction() {
+        suppressPositionPublishUntilMs = android.os.SystemClock.elapsedRealtime() + 400L
+    }
+
     private fun startTicker() {
         viewModelScope.launch {
             var lastBackgroundUiUpdateMs = 0L
@@ -13614,11 +13629,17 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 val buffered = (player.bufferedPositionMs / 1_000L) * 1_000L
                 val active = lyricsEngine.currentLine(position, snapshot.lyrics)
                 val playbackStateChanged = snapshot.isPlaying != player.isPlaying
-                val shouldPublishUi = snapshot.selectedTab == LevyraTab.Player ||
-                    snapshot.showLyrics ||
-                    nowElapsed - lastBackgroundUiUpdateMs >= 1_000L ||
-                    playbackStateChanged ||
-                    snapshot.durationMs != duration
+                // While the user is actively animating/gesturing on the player (expanding the mini
+                // player, swiping tracks), skip position-only UI publishes so the heavy player tree
+                // does not recompose mid-animation and drop frames. Play/pause and duration changes
+                // still publish immediately.
+                val interacting = nowElapsed < suppressPositionPublishUntilMs
+                val importantChange = playbackStateChanged || snapshot.durationMs != duration
+                val shouldPublishUi = importantChange || (!interacting && (
+                    snapshot.selectedTab == LevyraTab.Player ||
+                        snapshot.showLyrics ||
+                        nowElapsed - lastBackgroundUiUpdateMs >= 1_000L
+                    ))
                 if (shouldPublishUi) {
                     _state.update {
                         it.copy(
