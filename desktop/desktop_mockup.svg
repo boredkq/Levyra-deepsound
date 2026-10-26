@@ -1,0 +1,629 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1440 900" width="1440" height="900" style="background:#07090E; font-family:-apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Roboto, sans-serif;">
+  <defs>
+    <!-- Filters for Glassmorphism & Glow -->
+    <filter id="glass-shadow" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="12" stdDeviation="24" flood-color="#000000" flood-opacity="0.6"/>
+    </filter>
+    <filter id="cyan-glow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="8" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+    <filter id="soft-glow" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="16" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+    <filter id="aura-blur" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="30"/>
+    </filter>
+
+    <!-- Gradients -->
+    <linearGradient id="bg-grad" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#07090E"/>
+      <stop offset="50%" stop-color="#0B0F19"/>
+      <stop offset="100%" stop-color="#05070A"/>
+    </linearGradient>
+
+    <linearGradient id="sidebar-grad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#0F1420" stop-opacity="0.85"/>
+      <stop offset="100%" stop-color="#090C14" stop-opacity="0.95"/>
+    </linearGradient>
+
+    <linearGradient id="glass-border" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#FFFFFF" stop-opacity="0.18"/>
+      <stop offset="100%" stop-color="#FFFFFF" stop-opacity="0.04"/>
+    </linearGradient>
+
+    <linearGradient id="brand-grad" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#00E5FF"/>
+      <stop offset="100%" stop-color="#B388FF"/>
+    </linearGradient>
+
+    <linearGradient id="wave-banner" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#00354E"/>
+      <stop offset="45%" stop-color="#1A103C"/>
+      <stop offset="100%" stop-color="#2D0B2E"/>
+    </linearGradient>
+
+    <linearGradient id="cyan-btn" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#00E5FF"/>
+      <stop offset="100%" stop-color="#0091FF"/>
+    </linearGradient>
+
+    <linearGradient id="cover-1" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#FF5252"/>
+      <stop offset="100%" stop-color="#FF7A00"/>
+    </linearGradient>
+    <linearGradient id="cover-2" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#7C4DFF"/>
+      <stop offset="100%" stop-color="#00E5FF"/>
+    </linearGradient>
+    <linearGradient id="cover-3" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#00E676"/>
+      <stop offset="100%" stop-color="#00B0FF"/>
+    </linearGradient>
+    <linearGradient id="cover-4" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#FF4081"/>
+      <stop offset="100%" stop-color="#651FFF"/>
+    </linearGradient>
+
+    <linearGradient id="player-dock-grad" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#121826" stop-opacity="0.92"/>
+      <stop offset="50%" stop-color="#151D2E" stop-opacity="0.94"/>
+      <stop offset="100%" stop-color="#101522" stop-opacity="0.92"/>
+    </linearGradient>
+
+    <!-- Clip Paths -->
+    <clipPath id="squircle-avatar">
+      <rect x="0" y="0" width="36" height="36" rx="10"/>
+    </clipPath>
+  </defs>
+
+  <!-- Background Base Canvas -->
+  <rect width="1440" height="900" fill="url(#bg-grad)"/>
+
+  <!-- Ambient Aura Lights behind panels -->
+  <circle cx="500" cy="220" r="180" fill="#00E5FF" opacity="0.08" filter="url(#aura-blur)"/>
+  <circle cx="850" cy="180" r="220" fill="#B388FF" opacity="0.07" filter="url(#aura-blur)"/>
+  <circle cx="1300" cy="400" r="190" fill="#FF2A85" opacity="0.06" filter="url(#aura-blur)"/>
+
+  <!-- ========================================================================= -->
+  <!-- TOP WINDOW TITLE BAR & MAC TRAFFIC LIGHTS -->
+  <!-- ========================================================================= -->
+  <rect x="0" y="0" width="1440" height="42" fill="#06080D" fill-opacity="0.9"/>
+  <line x1="0" y1="42" x2="1440" y2="42" stroke="#FFFFFF" stroke-opacity="0.06" stroke-width="1"/>
+
+  <!-- macOS Window Controls -->
+  <circle cx="21" cy="21" r="6" fill="#FF5F56"/>
+  <circle cx="41" cy="21" r="6" fill="#FFBD2E"/>
+  <circle cx="61" cy="21" r="6" fill="#27C93F"/>
+
+  <!-- App Title & Breadcrumbs -->
+  <text x="96" y="26" fill="#8E9AA8" font-size="12" font-weight="600" letter-spacing="0.5">LEVYRA DESKTOP</text>
+  <text x="210" y="26" fill="#485362" font-size="12">|</text>
+  <text x="226" y="26" fill="#4DE1FF" font-size="12" font-weight="500">Expressive Material 3 • Linear Glass Engine</text>
+
+  <!-- Window Right Status Indicators -->
+  <rect x="1245" y="10" width="180" height="22" rx="11" fill="#FFFFFF" fill-opacity="0.05" stroke="#FFFFFF" stroke-opacity="0.08"/>
+  <circle cx="1257" cy="21" r="4" fill="#00E676" filter="url(#cyan-glow)"/>
+  <text x="1268" y="25" fill="#D0D7DE" font-size="11" font-weight="500">Яндекс Музыка (320k)</text>
+
+  <!-- ========================================================================= -->
+  <!-- LEFT SIDEBAR (NAVIGATION & SOURCES) -->
+  <!-- ========================================================================= -->
+  <rect x="12" y="52" width="228" height="836" rx="20" fill="url(#sidebar-grad)" stroke="url(#glass-border)" stroke-width="1" filter="url(#glass-shadow)"/>
+
+  <!-- Brand Logo Block -->
+  <g transform="translate(30, 72)">
+    <rect width="36" height="36" rx="10" fill="url(#brand-grad)" filter="url(#cyan-glow)"/>
+    <text x="11" y="25" fill="#FFFFFF" font-size="20" font-weight="900">L</text>
+    <text x="46" y="20" fill="#FFFFFF" font-size="16" font-weight="800" letter-spacing="1">LEVYRA</text>
+    <text x="46" y="33" fill="#00E5FF" font-size="10" font-weight="600" letter-spacing="0.5">DESKTOP SUITE</text>
+  </g>
+
+  <!-- Active Source Switcher Card -->
+  <g transform="translate(24, 126)">
+    <rect width="204" height="42" rx="12" fill="#FFFFFF" fill-opacity="0.04" stroke="#00E5FF" stroke-opacity="0.3" stroke-width="1"/>
+    <circle cx="20" cy="21" r="5" fill="#FFCC00"/>
+    <text x="32" y="23" fill="#FFFFFF" font-size="12" font-weight="600">Яндекс Музыка</text>
+    <text x="32" y="34" fill="#8E9AA8" font-size="9">Активный источник • 320 kbps</text>
+    <path d="M185 18 L190 23 L195 18" stroke="#8E9AA8" stroke-width="1.5" fill="none" stroke-linecap="round"/>
+  </g>
+
+  <!-- Navigation Section 1: Главное меню -->
+  <text x="30" y="196" fill="#586576" font-size="10" font-weight="700" letter-spacing="1">ГЛАВНОЕ МЕНЮ</text>
+
+  <!-- Nav Item: Главная (Active) -->
+  <g transform="translate(24, 208)">
+    <rect width="204" height="38" rx="12" fill="#00E5FF" fill-opacity="0.12" stroke="#00E5FF" stroke-opacity="0.35"/>
+    <rect x="0" y="10" width="3" height="18" rx="1.5" fill="#00E5FF" filter="url(#cyan-glow)"/>
+    <!-- Home Icon -->
+    <path d="M22 24 L22 17 L29 12 L36 17 L36 24 Z" fill="none" stroke="#00E5FF" stroke-width="1.8" stroke-linejoin="round"/>
+    <text x="46" y="23" fill="#FFFFFF" font-size="13" font-weight="600">Главная</text>
+  </g>
+
+  <!-- Nav Item: Поиск -->
+  <g transform="translate(24, 252)">
+    <rect width="204" height="38" rx="12" fill="transparent"/>
+    <circle cx="28" cy="18" r="6" fill="none" stroke="#8E9AA8" stroke-width="1.8"/>
+    <line x1="33" y1="23" x2="38" y2="28" stroke="#8E9AA8" stroke-width="1.8" stroke-linecap="round"/>
+    <text x="46" y="23" fill="#C0C8D2" font-size="13" font-weight="500">Поиск</text>
+    <rect x="160" y="10" width="36" height="18" rx="5" fill="#FFFFFF" fill-opacity="0.06"/>
+    <text x="168" y="23" fill="#8E9AA8" font-size="10" font-weight="600">⌘K</text>
+  </g>
+
+  <!-- Nav Item: Моя волна / Радио -->
+  <g transform="translate(24, 296)">
+    <rect width="204" height="38" rx="12" fill="transparent"/>
+    <!-- Wave Icon -->
+    <path d="M20 20 C23 14 26 26 29 20 C32 14 35 26 38 20" fill="none" stroke="#FF4081" stroke-width="2" stroke-linecap="round"/>
+    <text x="46" y="23" fill="#C0C8D2" font-size="13" font-weight="500">Моя волна</text>
+    <rect x="172" y="12" width="24" height="14" rx="4" fill="#FF4081" fill-opacity="0.2"/>
+    <text x="176" y="23" fill="#FF4081" font-size="9" font-weight="700">LIVE</text>
+  </g>
+
+  <!-- Nav Item: Медиатека -->
+  <g transform="translate(24, 340)">
+    <rect width="204" height="38" rx="12" fill="transparent"/>
+    <path d="M20 14 L34 14 M20 19 L30 19 M20 24 L36 24" stroke="#8E9AA8" stroke-width="1.8" stroke-linecap="round"/>
+    <text x="46" y="23" fill="#C0C8D2" font-size="13" font-weight="500">Медиатека</text>
+  </g>
+
+  <!-- Navigation Section 2: Моя музыка (Коллекции) -->
+  <text x="30" y="406" fill="#586576" font-size="10" font-weight="700" letter-spacing="1">МОЯ МУЗЫКА (ЯНДЕКС)</text>
+
+  <!-- Collection: Любимые треки -->
+  <g transform="translate(24, 418)">
+    <rect width="204" height="34" rx="10" fill="transparent"/>
+    <path d="M22 18 C20 14 15 16 17 21 L24 27 L31 21 C33 16 28 14 26 18 Z" fill="#FF5252" opacity="0.85"/>
+    <text x="46" y="22" fill="#C0C8D2" font-size="12" font-weight="500">Любимые треки</text>
+    <text x="175" y="22" fill="#586576" font-size="11" font-weight="500">1,248</text>
+  </g>
+
+  <!-- Collection: Плейлисты -->
+  <g transform="translate(24, 456)">
+    <rect width="204" height="34" rx="10" fill="transparent"/>
+    <rect x="18" y="12" width="14" height="14" rx="4" fill="#7C4DFF" opacity="0.8"/>
+    <text x="46" y="22" fill="#C0C8D2" font-size="12" font-weight="500">Плейлисты</text>
+    <text x="188" y="22" fill="#586576" font-size="11" font-weight="500">18</text>
+  </g>
+
+  <!-- Collection: Скачанные треки -->
+  <g transform="translate(24, 494)">
+    <rect width="204" height="34" rx="10" fill="transparent"/>
+    <circle cx="25" cy="19" r="8" fill="#00E676" fill-opacity="0.2"/>
+    <path d="M25 15 L25 21 M22 19 L25 22 L28 19" stroke="#00E676" stroke-width="1.5" stroke-linecap="round"/>
+    <text x="46" y="22" fill="#C0C8D2" font-size="12" font-weight="500">Загрузки (Offline)</text>
+    <text x="182" y="22" fill="#586576" font-size="11" font-weight="500">340</text>
+  </g>
+
+  <!-- Navigation Section 3: Студии кастомизации -->
+  <text x="30" y="556" fill="#586576" font-size="10" font-weight="700" letter-spacing="1">СТУДИИ КАСТОМИЗАЦИИ</text>
+
+  <!-- Studio: Theme Studio -->
+  <g transform="translate(24, 568)">
+    <rect width="204" height="36" rx="10" fill="#FFFFFF" fill-opacity="0.04" stroke="#FFFFFF" stroke-opacity="0.08"/>
+    <circle cx="28" cy="18" r="5" fill="#00E5FF"/>
+    <circle cx="34" cy="15" r="3" fill="#B388FF"/>
+    <text x="46" y="22" fill="#FFFFFF" font-size="12" font-weight="600">Theme Studio</text>
+    <text x="156" y="22" fill="#00E5FF" font-size="10">Cosmic</text>
+  </g>
+
+  <!-- Studio: Lyrics Studio -->
+  <g transform="translate(24, 610)">
+    <rect width="204" height="36" rx="10" fill="#FFFFFF" fill-opacity="0.04" stroke="#FFFFFF" stroke-opacity="0.08"/>
+    <path d="M26 13 L32 19 L23 28 L17 28 L17 22 Z" fill="none" stroke="#FF4081" stroke-width="1.5"/>
+    <text x="46" y="22" fill="#FFFFFF" font-size="12" font-weight="600">Lyrics Studio</text>
+    <text x="150" y="22" fill="#FF4081" font-size="10">Karaoke</text>
+  </g>
+
+  <!-- Bottom Settings & Account Pill -->
+  <g transform="translate(24, 828)">
+    <rect width="204" height="46" rx="14" fill="#FFFFFF" fill-opacity="0.03" stroke="#FFFFFF" stroke-opacity="0.06"/>
+    <circle cx="24" cy="23" r="14" fill="url(#brand-grad)"/>
+    <text x="19" y="27" fill="#FFFFFF" font-size="12" font-weight="700">K</text>
+    <text x="46" y="20" fill="#FFFFFF" font-size="12" font-weight="600">Kola Aleksandrov</text>
+    <text x="46" y="33" fill="#00E676" font-size="10">● Яндекс Плюс активен</text>
+  </g>
+
+  <!-- ========================================================================= -->
+  <!-- MAIN CONTENT AREA (HERO BANNER + SHELVES + TOP CHARTS) -->
+  <!-- ========================================================================= -->
+
+  <!-- Top Search Bar & Header Controls -->
+  <g transform="translate(256, 56)">
+    <!-- Back / Forward Buttons -->
+    <rect x="0" y="0" width="34" height="34" rx="10" fill="#FFFFFF" fill-opacity="0.05" stroke="#FFFFFF" stroke-opacity="0.08"/>
+    <path d="M19 12 L14 17 L19 22" stroke="#8E9AA8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+    <rect x="40" y="0" width="34" height="34" rx="10" fill="#FFFFFF" fill-opacity="0.05" stroke="#FFFFFF" stroke-opacity="0.08"/>
+    <path d="M55 12 L60 17 L55 22" stroke="#8E9AA8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+
+    <!-- Search Input Pill -->
+    <g transform="translate(86, 0)">
+      <rect width="440" height="34" rx="17" fill="#0F1422" stroke="#FFFFFF" stroke-opacity="0.1" stroke-width="1"/>
+      <circle cx="18" cy="17" r="5" fill="none" stroke="#586576" stroke-width="1.6"/>
+      <line x1="22" y1="21" x2="26" y2="25" stroke="#586576" stroke-width="1.6"/>
+      <text x="34" y="22" fill="#586576" font-size="12">Поиск треков, альбомов, артистов или плейлистов...</text>
+      <rect x="396" y="8" width="32" height="18" rx="5" fill="#FFFFFF" fill-opacity="0.06"/>
+      <text x="402" y="21" fill="#8E9AA8" font-size="10" font-weight="600">ESC</text>
+    </g>
+
+    <!-- Source Quick Filter Tabs -->
+    <g transform="translate(540, 3)">
+      <rect x="0" y="0" width="62" height="28" rx="14" fill="#00E5FF" fill-opacity="0.15" stroke="#00E5FF" stroke-opacity="0.4"/>
+      <text x="14" y="18" fill="#00E5FF" font-size="11" font-weight="700">Яндекс</text>
+
+      <rect x="68" y="0" width="84" height="28" rx="14" fill="#FFFFFF" fill-opacity="0.04" stroke="#FFFFFF" stroke-opacity="0.08"/>
+      <text x="78" y="18" fill="#8E9AA8" font-size="11" font-weight="500">SoundCloud</text>
+
+      <rect x="158" y="0" width="68" height="28" rx="14" fill="#FFFFFF" fill-opacity="0.04" stroke="#FFFFFF" stroke-opacity="0.08"/>
+      <text x="168" y="18" fill="#8E9AA8" font-size="11" font-weight="500">YouTube</text>
+    </g>
+  </g>
+
+  <!-- ========================================================================= -->
+  <!-- HERO BANNER: ИНТЕРАКТИВНАЯ «МОЯ ВОЛНА» (ЯНДЕКС МУЗЫКА) -->
+  <!-- ========================================================================= -->
+  <g transform="translate(256, 104)">
+    <rect width="840" height="180" rx="22" fill="url(#wave-banner)" stroke="#00E5FF" stroke-opacity="0.3" stroke-width="1.2" filter="url(#glass-shadow)"/>
+
+    <!-- Ambient glowing backdrop effect -->
+    <circle cx="100" cy="90" r="80" fill="#00E5FF" opacity="0.25" filter="url(#aura-blur)"/>
+    <circle cx="280" cy="90" r="100" fill="#FF4081" opacity="0.15" filter="url(#aura-blur)"/>
+
+    <!-- Vinyl Disk with Rotating Rotor Art -->
+    <g transform="translate(30, 25)">
+      <!-- Outer Vinyl Edge -->
+      <circle cx="65" cy="65" r="65" fill="#0D1117" stroke="#FFFFFF" stroke-opacity="0.15" stroke-width="2"/>
+      <circle cx="65" cy="65" r="54" fill="none" stroke="#FFFFFF" stroke-opacity="0.06" stroke-width="1"/>
+      <circle cx="65" cy="65" r="44" fill="none" stroke="#FFFFFF" stroke-opacity="0.06" stroke-width="1"/>
+      <!-- Inner Artwork Sticker -->
+      <circle cx="65" cy="65" r="32" fill="url(#cover-4)"/>
+      <circle cx="65" cy="65" r="8" fill="#0D1117" stroke="#FFCC00" stroke-width="1.5"/>
+      <!-- Animated Waveform Rings -->
+      <circle cx="65" cy="65" r="70" fill="none" stroke="#00E5FF" stroke-width="1.5" stroke-dasharray="6 4" opacity="0.8"/>
+    </g>
+
+    <!-- Wave Title & Metadata -->
+    <g transform="translate(185, 32)">
+      <rect x="0" y="0" width="136" height="20" rx="10" fill="#00E5FF" fill-opacity="0.18"/>
+      <text x="10" y="14" fill="#00E5FF" font-size="10" font-weight="800" letter-spacing="1">ЯНДЕКС • МОЯ ВОЛНА</text>
+
+      <text x="0" y="48" fill="#FFFFFF" font-size="24" font-weight="800" letter-spacing="-0.5">Бесконечный поток под ваш вкус</text>
+      <text x="0" y="70" fill="#B0BDCC" font-size="13">Индивидуальные рекомендации, новинки жанра и персональные миксы</text>
+
+      <!-- Mood & Activity Chips -->
+      <g transform="translate(0, 88)">
+        <!-- Mood 1: Бодрое (Active) -->
+        <rect x="0" y="0" width="86" height="28" rx="14" fill="#00E5FF" stroke="#00E5FF" stroke-width="1"/>
+        <text x="14" y="18" fill="#05101A" font-size="11" font-weight="700">⚡ Бодрое</text>
+
+        <!-- Mood 2: Радостное -->
+        <rect x="94" y="0" width="98" height="28" rx="14" fill="#FFFFFF" fill-opacity="0.06" stroke="#FFFFFF" stroke-opacity="0.12"/>
+        <text x="106" y="18" fill="#FFFFFF" font-size="11" font-weight="500">✨ Радостное</text>
+
+        <!-- Mood 3: Спокойное -->
+        <rect x="200" y="0" width="102" height="28" rx="14" fill="#FFFFFF" fill-opacity="0.06" stroke="#FFFFFF" stroke-opacity="0.12"/>
+        <text x="212" y="18" fill="#FFFFFF" font-size="11" font-weight="500">🌊 Спокойное</text>
+
+        <!-- Mood 4: Ночное -->
+        <rect x="310" y="0" width="88" height="28" rx="14" fill="#FFFFFF" fill-opacity="0.06" stroke="#FFFFFF" stroke-opacity="0.12"/>
+        <text x="322" y="18" fill="#FFFFFF" font-size="11" font-weight="500">🌙 Ночное</text>
+      </g>
+    </g>
+
+    <!-- Wave Big Play & Reaction Controls -->
+    <g transform="translate(730, 60)">
+      <!-- Big Play Button -->
+      <circle cx="35" cy="35" r="32" fill="url(#cyan-btn)" filter="url(#cyan-glow)"/>
+      <path d="M28 23 L47 35 L28 47 Z" fill="#06121E"/>
+
+      <!-- Like / Heart button -->
+      <circle cx="-16" cy="35" r="18" fill="#FFFFFF" fill-opacity="0.08" stroke="#FFFFFF" stroke-opacity="0.12"/>
+      <path d="M-22 32 C-24 28 -29 30 -27 34 L-16 41 L-5 34 C-3 30 -8 28 -10 32 Z" fill="#FF5252"/>
+
+      <!-- Next / Dislike button -->
+      <circle cx="86" cy="35" r="18" fill="#FFFFFF" fill-opacity="0.08" stroke="#FFFFFF" stroke-opacity="0.12"/>
+      <path d="M80 29 L92 41 M92 29 L80 41" stroke="#8E9AA8" stroke-width="2" stroke-linecap="round"/>
+    </g>
+  </g>
+
+  <!-- ========================================================================= -->
+  <!-- SECTION: БЫСТРЫЙ ВЫБОР (SQUIRCLE CARDS) -->
+  <!-- ========================================================================= -->
+  <g transform="translate(256, 304)">
+    <text x="0" y="16" fill="#FFFFFF" font-size="17" font-weight="700" letter-spacing="-0.2">Быстрый выбор и альбомы</text>
+    <text x="790" y="16" fill="#00E5FF" font-size="12" font-weight="600">Все (18) →</text>
+
+    <!-- Card 1 -->
+    <g transform="translate(0, 30)">
+      <rect width="198" height="68" rx="16" fill="#111624" stroke="#FFFFFF" stroke-opacity="0.08"/>
+      <rect x="8" y="8" width="52" height="52" rx="12" fill="url(#cover-1)"/>
+      <text x="70" y="28" fill="#FFFFFF" font-size="13" font-weight="600">Любимые треки</text>
+      <text x="70" y="44" fill="#8E9AA8" font-size="11">Яндекс Музыка</text>
+      <text x="70" y="58" fill="#00E5FF" font-size="10" font-weight="600">1,248 треков</text>
+    </g>
+
+    <!-- Card 2 -->
+    <g transform="translate(214, 30)">
+      <rect width="198" height="68" rx="16" fill="#111624" stroke="#FFFFFF" stroke-opacity="0.08"/>
+      <rect x="8" y="8" width="52" height="52" rx="12" fill="url(#cover-2)"/>
+      <text x="70" y="28" fill="#FFFFFF" font-size="13" font-weight="600">Плейлист Дня</text>
+      <text x="70" y="44" fill="#8E9AA8" font-size="11">Каждое утро</text>
+      <text x="70" y="58" fill="#B388FF" font-size="10" font-weight="600">Обновлено</text>
+    </g>
+
+    <!-- Card 3 -->
+    <g transform="translate(428, 30)">
+      <rect width="198" height="68" rx="16" fill="#111624" stroke="#FFFFFF" stroke-opacity="0.08"/>
+      <rect x="8" y="8" width="52" height="52" rx="12" fill="url(#cover-3)"/>
+      <text x="70" y="28" fill="#FFFFFF" font-size="13" font-weight="600">Премьеры недели</text>
+      <text x="70" y="44" fill="#8E9AA8" font-size="11">Свежие релизы</text>
+      <text x="70" y="58" fill="#00E676" font-size="10" font-weight="600">Новинки</text>
+    </g>
+
+    <!-- Card 4 -->
+    <g transform="translate(642, 30)">
+      <rect width="198" height="68" rx="16" fill="#111624" stroke="#FFFFFF" stroke-opacity="0.08"/>
+      <rect x="8" y="8" width="52" height="52" rx="12" fill="url(#cover-4)"/>
+      <text x="70" y="28" fill="#FFFFFF" font-size="13" font-weight="600">SoundCloud Mix</text>
+      <text x="70" y="44" fill="#8E9AA8" font-size="11">Deep &amp; Remixes</text>
+      <text x="70" y="58" fill="#FF4081" font-size="10" font-weight="600">SoundCloud</text>
+    </g>
+  </g>
+
+  <!-- ========================================================================= -->
+  <!-- SECTION: ТРЕКИ И ЧАРТЫ (ТАБЛИЦА С ИНТЕРАКТИВНЫМИ СТРОКАМИ) -->
+  <!-- ========================================================================= -->
+  <g transform="translate(256, 426)">
+    <text x="0" y="16" fill="#FFFFFF" font-size="17" font-weight="700" letter-spacing="-0.2">Сейчас слушают • Топ треки</text>
+
+    <!-- Table Header Row -->
+    <g transform="translate(0, 32)">
+      <text x="14" y="0" fill="#586576" font-size="11" font-weight="700">#</text>
+      <text x="56" y="0" fill="#586576" font-size="11" font-weight="700">НАЗВАНИЕ ТРЕКА</text>
+      <text x="420" y="0" fill="#586576" font-size="11" font-weight="700">АЛЬБОМ</text>
+      <text x="640" y="0" fill="#586576" font-size="11" font-weight="700">ИСТОЧНИК</text>
+      <text x="785" y="0" fill="#586576" font-size="11" font-weight="700">ВРЕМЯ</text>
+      <line x1="0" y1="10" x2="840" y2="10" stroke="#FFFFFF" stroke-opacity="0.05" stroke-width="1"/>
+    </g>
+
+    <!-- Track Row 1 (Currently Playing Active Row) -->
+    <g transform="translate(0, 52)">
+      <rect width="840" height="56" rx="14" fill="#00E5FF" fill-opacity="0.08" stroke="#00E5FF" stroke-opacity="0.25"/>
+      <rect x="0" y="14" width="3" height="28" rx="1.5" fill="#00E5FF" filter="url(#cyan-glow)"/>
+      <!-- Equalizer animation icon -->
+      <rect x="18" y="26" width="3" height="12" rx="1.5" fill="#00E5FF"/>
+      <rect x="23" y="20" width="3" height="18" rx="1.5" fill="#00E5FF"/>
+      <rect x="28" y="24" width="3" height="14" rx="1.5" fill="#00E5FF"/>
+
+      <!-- Cover Art Thumbnail -->
+      <rect x="42" y="8" width="40" height="40" rx="8" fill="url(#cover-1)"/>
+      <text x="94" y="26" fill="#00E5FF" font-size="14" font-weight="700">Смех</text>
+      <text x="94" y="42" fill="#8E9AA8" font-size="12">Дайте танк (!)</text>
+
+      <text x="420" y="34" fill="#C0C8D2" font-size="13">Человеко-часы</text>
+
+      <!-- Source Badge -->
+      <rect x="640" y="19" width="94" height="20" rx="10" fill="#FFCC00" fill-opacity="0.15" stroke="#FFCC00" stroke-opacity="0.3"/>
+      <text x="648" y="33" fill="#FFCC00" font-size="10" font-weight="700">Яндекс • 320k</text>
+
+      <!-- Like Heart (Filled) -->
+      <path d="M752 25 C750 22 746 23 748 27 L754 32 L760 27 C762 23 758 22 756 25 Z" fill="#FF5252"/>
+
+      <text x="785" y="34" fill="#00E5FF" font-size="13" font-weight="600">03:14</text>
+    </g>
+
+    <!-- Track Row 2 -->
+    <g transform="translate(0, 114)">
+      <rect width="840" height="52" rx="12" fill="#FFFFFF" fill-opacity="0.02"/>
+      <text x="22" y="32" fill="#8E9AA8" font-size="13" font-weight="600">2</text>
+      <rect x="42" y="6" width="40" height="40" rx="8" fill="url(#cover-2)"/>
+      <text x="94" y="24" fill="#FFFFFF" font-size="13" font-weight="600">Положение</text>
+      <text x="94" y="40" fill="#8E9AA8" font-size="12">Скриптонит</text>
+
+      <text x="420" y="32" fill="#8E9AA8" font-size="13">Уроборос: Улица 36</text>
+
+      <rect x="640" y="16" width="94" height="20" rx="10" fill="#FFCC00" fill-opacity="0.15" stroke="#FFCC00" stroke-opacity="0.3"/>
+      <text x="648" y="30" fill="#FFCC00" font-size="10" font-weight="700">Яндекс • 320k</text>
+
+      <path d="M752 23 C750 20 746 21 748 25 L754 30 L760 25 C762 21 758 20 756 23 Z" fill="none" stroke="#586576" stroke-width="1.5"/>
+      <text x="785" y="32" fill="#8E9AA8" font-size="13">04:22</text>
+    </g>
+
+    <!-- Track Row 3 -->
+    <g transform="translate(0, 172)">
+      <rect width="840" height="52" rx="12" fill="#FFFFFF" fill-opacity="0.02"/>
+      <text x="22" y="32" fill="#8E9AA8" font-size="13" font-weight="600">3</text>
+      <rect x="42" y="6" width="40" height="40" rx="8" fill="url(#cover-3)"/>
+      <text x="94" y="24" fill="#FFFFFF" font-size="13" font-weight="600">Danielle (smile on my face)</text>
+      <text x="94" y="40" fill="#8E9AA8" font-size="12">Fred again..</text>
+
+      <text x="420" y="32" fill="#8E9AA8" font-size="13">Actual Life 3</text>
+
+      <rect x="640" y="16" width="94" height="20" rx="10" fill="#FF4081" fill-opacity="0.15" stroke="#FF4081" stroke-opacity="0.3"/>
+      <text x="648" y="30" fill="#FF4081" font-size="10" font-weight="700">SoundCloud</text>
+
+      <path d="M752 23 C750 20 746 21 748 25 L754 30 L760 25 C762 21 758 20 756 23 Z" fill="none" stroke="#586576" stroke-width="1.5"/>
+      <text x="785" y="32" fill="#8E9AA8" font-size="13">03:21</text>
+    </g>
+
+    <!-- Track Row 4 -->
+    <g transform="translate(0, 230)">
+      <rect width="840" height="52" rx="12" fill="#FFFFFF" fill-opacity="0.02"/>
+      <text x="22" y="32" fill="#8E9AA8" font-size="13" font-weight="600">4</text>
+      <rect x="42" y="6" width="40" height="40" rx="8" fill="url(#cover-4)"/>
+      <text x="94" y="24" fill="#FFFFFF" font-size="13" font-weight="600">Blinding Lights</text>
+      <text x="94" y="40" fill="#8E9AA8" font-size="12">The Weeknd</text>
+
+      <text x="420" y="32" fill="#8E9AA8" font-size="13">After Hours</text>
+
+      <rect x="640" y="16" width="94" height="20" rx="10" fill="#00E5FF" fill-opacity="0.15" stroke="#00E5FF" stroke-opacity="0.3"/>
+      <text x="652" y="30" fill="#00E5FF" font-size="10" font-weight="700">YouTube HQ</text>
+
+      <path d="M752 23 C750 20 746 21 748 25 L754 30 L760 25 C762 21 758 20 756 23 Z" fill="none" stroke="#586576" stroke-width="1.5"/>
+      <text x="785" y="32" fill="#8E9AA8" font-size="13">03:20</text>
+    </g>
+  </g>
+
+  <!-- ========================================================================= -->
+  <!-- RIGHT SIDE PANEL: LYRICS STUDIO (СИНХРОНИЗИРОВАННЫЙ ТЕКСТ & КАРАОКЕ) -->
+  <!-- ========================================================================= -->
+  <g transform="translate(1112, 52)">
+    <rect width="316" height="738" rx="20" fill="#0E131E" fill-opacity="0.85" stroke="url(#glass-border)" stroke-width="1" filter="url(#glass-shadow)"/>
+
+    <!-- Subtle Cover Ambilight Glow in Lyrics -->
+    <circle cx="158" cy="280" r="120" fill="#FF5252" opacity="0.12" filter="url(#aura-blur)"/>
+    <circle cx="220" cy="350" r="100" fill="#00E5FF" opacity="0.08" filter="url(#aura-blur)"/>
+
+    <!-- Header Block -->
+    <g transform="translate(20, 24)">
+      <text x="0" y="14" fill="#586576" font-size="10" font-weight="800" letter-spacing="1">LYRICS STUDIO • LRC</text>
+      <text x="0" y="38" fill="#FFFFFF" font-size="17" font-weight="700">Слова песни</text>
+      <rect x="186" y="24" width="86" height="20" rx="10" fill="#00E5FF" fill-opacity="0.15" stroke="#00E5FF" stroke-opacity="0.3"/>
+      <text x="194" y="37" fill="#00E5FF" font-size="10" font-weight="700">Синхронно</text>
+    </g>
+
+    <!-- Lyrics Lines Stream (Karaoke with progressive glow) -->
+    <g transform="translate(20, 110)">
+      <!-- Line 1 (Passed - Dimmed) -->
+      <text x="0" y="0" fill="#FFFFFF" fill-opacity="0.25" font-size="14" font-weight="500">Я смотрю на тебя сквозь туман,</text>
+
+      <!-- Line 2 (Passed - Dimmed) -->
+      <text x="0" y="38" fill="#FFFFFF" fill-opacity="0.35" font-size="15" font-weight="500">В этом городе всё так знакомо.</text>
+
+      <!-- Line 3 (ACTIVE KARAOKE LINE - BIG GLOWING) -->
+      <g transform="translate(0, 84)">
+        <rect x="-10" y="-26" width="296" height="54" rx="14" fill="#00E5FF" fill-opacity="0.1" stroke="#00E5FF" stroke-opacity="0.25"/>
+        <text x="0" y="4" fill="#FFFFFF" font-size="20" font-weight="800" filter="url(#cyan-glow)">И смеюсь, потому что</text>
+        <text x="0" y="28" fill="#00E5FF" font-size="20" font-weight="800" filter="url(#cyan-glow)">мне весело!</text>
+      </g>
+
+      <!-- Line 4 (Upcoming - Slightly Dimmed) -->
+      <text x="0" y="180" fill="#FFFFFF" fill-opacity="0.65" font-size="16" font-weight="600">Среди серых домов и витрин,</text>
+
+      <!-- Line 5 (Upcoming) -->
+      <text x="0" y="222" fill="#FFFFFF" fill-opacity="0.4" font-size="15" font-weight="500">Мы останемся здесь до утра,</text>
+
+      <!-- Line 6 (Upcoming) -->
+      <text x="0" y="260" fill="#FFFFFF" fill-opacity="0.25" font-size="14" font-weight="500">Пока музыка бьёт через край...</text>
+    </g>
+
+    <!-- Share Lyrics Card Button -->
+    <g transform="translate(20, 670)">
+      <rect width="276" height="44" rx="14" fill="#FFFFFF" fill-opacity="0.05" stroke="#FFFFFF" stroke-opacity="0.12"/>
+      <path d="M30 22 L40 14 L50 22 M40 14 L40 30" stroke="#00E5FF" stroke-width="1.8" stroke-linecap="round"/>
+      <text x="60" y="26" fill="#FFFFFF" font-size="12" font-weight="600">Поделиться цитатой карточкой</text>
+    </g>
+  </g>
+
+  <!-- ========================================================================= -->
+  <!-- BOTTOM PERSISTENT PLAYER DOCK (FLOATING GLASS PILL) -->
+  <!-- ========================================================================= -->
+  <g transform="translate(256, 804)">
+    <!-- Glass Pill Container -->
+    <rect width="1172" height="82" rx="22" fill="url(#player-dock-grad)" stroke="url(#glass-border)" stroke-width="1.2" filter="url(#glass-shadow)"/>
+
+    <!-- Left: Track Metadata & Cover -->
+    <g transform="translate(18, 14)">
+      <!-- Thumbnail Cover -->
+      <rect width="54" height="54" rx="12" fill="url(#cover-1)" stroke="#FFFFFF" stroke-opacity="0.1" filter="url(#cyan-glow)"/>
+      <!-- Track Details -->
+      <text x="68" y="23" fill="#FFFFFF" font-size="15" font-weight="700">Смех</text>
+      <text x="68" y="40" fill="#8E9AA8" font-size="12">Дайте танк (!)</text>
+
+      <!-- Source Badge -->
+      <rect x="175" y="11" width="92" height="18" rx="9" fill="#FFCC00" fill-opacity="0.18" stroke="#FFCC00" stroke-opacity="0.4"/>
+      <text x="183" y="23" fill="#FFCC00" font-size="9.5" font-weight="800">ЯНДЕКС • 320k</text>
+
+      <!-- Heart Like Button -->
+      <g transform="translate(278, 15)">
+        <circle cx="12" cy="12" r="14" fill="#FF5252" fill-opacity="0.15"/>
+        <path d="M7 9 C5 6 1 7 3 11 L12 18 L21 11 C23 7 19 6 17 9 Z" fill="#FF5252"/>
+      </g>
+    </g>
+
+    <!-- Center: Playback Transport Controls & Scrubber -->
+    <g transform="translate(430, 10)">
+      <!-- Buttons Row -->
+      <g transform="translate(80, 0)">
+        <!-- Shuffle -->
+        <path d="M10 16 L22 26 M10 26 L22 16" stroke="#8E9AA8" stroke-width="1.8" stroke-linecap="round"/>
+
+        <!-- Prev Track -->
+        <g transform="translate(48, 8)">
+          <path d="M18 6 L8 13 L18 20 Z M7 6 L7 20" fill="#C0C8D2" stroke="#C0C8D2" stroke-width="1"/>
+        </g>
+
+        <!-- Big Play/Pause Button with Glow -->
+        <g transform="translate(90, 0)">
+          <circle cx="21" cy="21" r="21" fill="url(#cyan-btn)" filter="url(#cyan-glow)"/>
+          <!-- Pause Bars -->
+          <rect x="15" y="12" width="4" height="18" rx="2" fill="#06121E"/>
+          <rect x="23" y="12" width="4" height="18" rx="2" fill="#06121E"/>
+        </g>
+
+        <!-- Next Track -->
+        <g transform="translate(150, 8)">
+          <path d="M8 6 L18 13 L8 20 Z M19 6 L19 20" fill="#C0C8D2" stroke="#C0C8D2" stroke-width="1"/>
+        </g>
+
+        <!-- Repeat -->
+        <g transform="translate(196, 8)">
+          <path d="M4 12 A6 6 0 1 1 14 17 L12 17 M14 14 L14 18 L10 18" stroke="#00E5FF" stroke-width="1.8" fill="none" stroke-linecap="round"/>
+        </g>
+      </g>
+
+      <!-- Scrubber Seek Bar -->
+      <g transform="translate(0, 48)">
+        <text x="0" y="9" fill="#00E5FF" font-size="11" font-weight="600">01:24</text>
+
+        <!-- Progress Track -->
+        <rect x="42" y="3" width="320" height="4" rx="2" fill="#FFFFFF" fill-opacity="0.1"/>
+        <!-- Buffered Track -->
+        <rect x="42" y="3" width="210" height="4" rx="2" fill="#FFFFFF" fill-opacity="0.2"/>
+        <!-- Active Played Bar -->
+        <rect x="42" y="3" width="140" height="4" rx="2" fill="url(#brand-grad)"/>
+        <!-- Scrubber Knob with Glow -->
+        <circle cx="182" cy="5" r="6" fill="#FFFFFF" filter="url(#cyan-glow)"/>
+
+        <text x="372" y="9" fill="#8E9AA8" font-size="11" font-weight="500">03:14</text>
+      </g>
+    </g>
+
+    <!-- Right: Volume, Lyrics, Queue, MiniPlayer Controls -->
+    <g transform="translate(940, 26)">
+      <!-- Lyrics Toggle (Active) -->
+      <g transform="translate(0, 4)">
+        <rect width="28" height="24" rx="6" fill="#00E5FF" fill-opacity="0.2"/>
+        <text x="6" y="16" fill="#00E5FF" font-size="10" font-weight="800">LRC</text>
+      </g>
+
+      <!-- Queue List -->
+      <g transform="translate(42, 6)">
+        <path d="M0 4 L14 4 M0 8 L14 8 M0 12 L10 12" stroke="#8E9AA8" stroke-width="1.8" stroke-linecap="round"/>
+      </g>
+
+      <!-- Volume Icon & Slider -->
+      <g transform="translate(74, 6)">
+        <path d="M4 6 L8 2 L8 14 L4 10 Z" fill="#8E9AA8"/>
+        <path d="M11 5 C12 6 12 10 11 11" stroke="#8E9AA8" stroke-width="1.5" fill="none" stroke-linecap="round"/>
+        <!-- Volume Slider -->
+        <rect x="20" y="6" width="70" height="4" rx="2" fill="#FFFFFF" fill-opacity="0.15"/>
+        <rect x="20" y="6" width="52" height="4" rx="2" fill="#00E5FF"/>
+        <circle cx="72" cy="8" r="4" fill="#FFFFFF"/>
+      </g>
+
+      <!-- Mini-Player Popout Icon -->
+      <g transform="translate(182, 6)">
+        <rect x="0" y="0" width="16" height="14" rx="3" fill="none" stroke="#8E9AA8" stroke-width="1.6"/>
+        <rect x="8" y="6" width="8" height="8" rx="2" fill="#00E5FF"/>
+      </g>
+    </g>
+  </g>
+</svg>

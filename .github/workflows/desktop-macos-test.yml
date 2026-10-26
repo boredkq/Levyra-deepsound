@@ -1,0 +1,44 @@
+name: Desktop macOS Test App
+
+on:
+  push:
+    branches:
+      - main
+      - master
+    paths:
+      - "desktop/macos-test/**"
+      - ".github/workflows/desktop-macos-test.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: desktop-macos-test-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-macos-test:
+    name: Build macOS Universal Test App & DMG
+    runs-on: macos-14
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Make build script executable
+        run: chmod +x desktop/macos-test/build.sh
+
+      - name: Build Universal App & DMG
+        shell: bash
+        run: ./desktop/macos-test/build.sh
+
+      - name: Upload macOS Artifacts
+        uses: actions/upload-artifact@v7
+        with:
+          name: levyra-desktop-macos-aaa-test
+          path: desktop/macos-test/dist/
+          retention-days: 14
+          if-no-files-found: error

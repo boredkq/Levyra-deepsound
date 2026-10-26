@@ -27,3 +27,12 @@ skills-lock.json
 # Local build diagnostics
 /[Bb]uild log.txt
 /.report/
+
+# macOS test app build artifacts
+desktop/macos-test/dist/
+desktop/macos-test/Levyra.app/
+
+# Third-party installed agent skills
+.agents/skills/*/
+!.agents/skills/levyra-*/
+

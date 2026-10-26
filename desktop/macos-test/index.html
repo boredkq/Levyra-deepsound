@@ -1,0 +1,864 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Levyra Desktop — AAA Interactive Experience</title>
+  <script src="https://www.gstatic.com/antigravity/web/dev/tailwindcss.min.js"></script>
+  <style>
+    /* Custom Scrollbar */
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: rgba(0, 0, 0, 0.1); }
+    ::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.15); border-radius: 9999px; }
+    ::-webkit-scrollbar-thumb:hover { background: rgba(255, 255, 255, 0.3); }
+
+    /* Aurora Orbs Float Animation */
+    @keyframes floatOrb1 {
+      0%, 100% { transform: translate(0, 0) scale(1); }
+      50% { transform: translate(60px, -40px) scale(1.15); }
+    }
+    @keyframes floatOrb2 {
+      0%, 100% { transform: translate(0, 0) scale(1); }
+      50% { transform: translate(-50px, 50px) scale(1.1); }
+    }
+    @keyframes spinVinyl {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(360deg); }
+    }
+    @keyframes pulseAura {
+      0%, 100% { opacity: 0.25; transform: scale(1); }
+      50% { opacity: 0.45; transform: scale(1.08); }
+    }
+
+    .aurora-orb-1 { animation: floatOrb1 16s ease-in-out infinite; }
+    .aurora-orb-2 { animation: floatOrb2 20s ease-in-out infinite; }
+    .vinyl-spinning { animation: spinVinyl 8s linear infinite; }
+    .aura-pulse { animation: pulseAura 4s ease-in-out infinite; }
+
+    /* Equalizer Bar Animation */
+    @keyframes eqBar {
+      0%, 100% { height: 6px; }
+      50% { height: 18px; }
+    }
+    .eq-playing .bar-1 { animation: eqBar 0.8s ease-in-out infinite; }
+    .eq-playing .bar-2 { animation: eqBar 0.6s ease-in-out infinite 0.2s; }
+    .eq-playing .bar-3 { animation: eqBar 0.9s ease-in-out infinite 0.4s; }
+
+    /* Dynamic Theme Variables */
+    :root {
+      --levyra-accent: #00E5FF;
+      --levyra-accent-secondary: #7C4DFF;
+      --levyra-accent-glow: rgba(0, 229, 255, 0.35);
+      --levyra-surface: rgba(14, 20, 34, 0.82);
+      --levyra-border: rgba(255, 255, 255, 0.1);
+      --levyra-radius: 16px;
+      --levyra-button-radius: 12px;
+      --levyra-pill-radius: 9999px;
+    }
+
+    .theme-cosmic {
+      --levyra-accent: #00E5FF;
+      --levyra-accent-secondary: #7C4DFF;
+      --levyra-accent-glow: rgba(0, 229, 255, 0.35);
+      --levyra-surface: rgba(14, 20, 34, 0.85);
+    }
+    .theme-amoled {
+      --levyra-accent: #FFFFFF;
+      --levyra-accent-secondary: #8E9AA8;
+      --levyra-accent-glow: rgba(255, 255, 255, 0.2);
+      --levyra-surface: rgba(10, 10, 12, 0.98);
+      --levyra-border: rgba(255, 255, 255, 0.08);
+    }
+    .theme-aura {
+      --levyra-accent: #FF2A85;
+      --levyra-accent-secondary: #8B5CF6;
+      --levyra-accent-glow: rgba(255, 42, 133, 0.35);
+      --levyra-surface: rgba(20, 14, 30, 0.85);
+    }
+    .theme-neon {
+      --levyra-accent: #00F0FF;
+      --levyra-accent-secondary: #0066FF;
+      --levyra-accent-glow: rgba(0, 240, 255, 0.45);
+      --levyra-surface: rgba(6, 14, 26, 0.9);
+    }
+    .theme-aurora {
+      --levyra-accent: #00FF87;
+      --levyra-accent-secondary: #60EFFF;
+      --levyra-accent-glow: rgba(0, 255, 135, 0.35);
+      --levyra-surface: rgba(8, 20, 20, 0.85);
+    }
+    .theme-ember {
+      --levyra-accent: #FF416C;
+      --levyra-accent-secondary: #FF4B2B;
+      --levyra-accent-glow: rgba(255, 65, 108, 0.35);
+      --levyra-surface: rgba(24, 12, 16, 0.85);
+    }
+
+    /* Shape Classes */
+    .shape-squircle {
+      --levyra-radius: 18px;
+      --levyra-button-radius: 12px;
+    }
+    .shape-cookie {
+      --levyra-radius: 24px 8px 24px 8px;
+      --levyra-button-radius: 16px 6px 16px 6px;
+    }
+    .shape-clover {
+      --levyra-radius: 14px 26px 14px 26px;
+      --levyra-button-radius: 10px 20px 10px 20px;
+    }
+    .shape-pill {
+      --levyra-radius: 9999px;
+      --levyra-button-radius: 9999px;
+    }
+  </style>
+</head>
+<body id="app-body" class="theme-cosmic shape-squircle bg-[#05070C] text-[#F1F5F9] min-h-screen antialiased select-none overflow-x-hidden p-3 md:p-6 transition-colors duration-500">
+
+  <!-- Ambient Aurora Orbs (Atmospheric Lighting) -->
+  <div class="fixed inset-0 pointer-events-none overflow-hidden z-0">
+    <div id="orb-1" class="aurora-orb-1 absolute -top-40 -left-40 w-[600px] h-[600px] rounded-full blur-[100px] opacity-20 transition-all duration-700" style="background: radial-gradient(circle, var(--levyra-accent), transparent 70%);"></div>
+    <div id="orb-2" class="aurora-orb-2 absolute top-1/3 -right-40 w-[650px] h-[650px] rounded-full blur-[110px] opacity-20 transition-all duration-700" style="background: radial-gradient(circle, var(--levyra-accent-secondary), transparent 70%);"></div>
+    <div class="absolute -bottom-40 left-1/3 w-[500px] h-[500px] rounded-full blur-[100px] opacity-15" style="background: radial-gradient(circle, #FF2A85, transparent 70%);"></div>
+  </div>
+
+  <!-- Master Desktop Container -->
+  <div class="relative z-10 max-w-[1580px] mx-auto bg-[var(--levyra-surface)] backdrop-blur-2xl border border-[var(--levyra-border)] rounded-[26px] shadow-[0_25px_70px_rgba(0,0,0,0.85)] flex flex-col h-[920px] overflow-hidden transition-all duration-500">
+
+    <!-- Top Window Chrome / Controls -->
+    <header class="px-6 py-3.5 border-b border-[var(--levyra-border)] bg-black/40 flex items-center justify-between">
+      <div class="flex items-center space-x-4">
+        <!-- macOS Traffic Lights -->
+        <div class="flex items-center space-x-2">
+          <button class="w-3.5 h-3.5 rounded-full bg-[#FF5F56] hover:opacity-80 transition cursor-pointer" title="Закрыть"></button>
+          <button class="w-3.5 h-3.5 rounded-full bg-[#FFBD2E] hover:opacity-80 transition cursor-pointer" title="Свернуть"></button>
+          <button class="w-3.5 h-3.5 rounded-full bg-[#27C93F] hover:opacity-80 transition cursor-pointer" title="Развернуть"></button>
+        </div>
+        <div class="h-4 w-px bg-white/10 ml-2"></div>
+        <span class="text-xs font-bold tracking-wider text-slate-300 uppercase">LEVYRA DESKTOP SUITE</span>
+      </div>
+
+      <!-- Quick Studio Tabs -->
+      <div class="flex items-center space-x-2 bg-white/5 p-1 rounded-xl border border-white/10 text-xs font-semibold">
+        <button onclick="switchView('home')" id="tab-btn-home" class="px-3.5 py-1.5 rounded-lg transition-all text-black font-bold shadow" style="background: var(--levyra-accent);">
+          Главная
+        </button>
+        <button onclick="switchView('themestudio')" id="tab-btn-themestudio" class="px-3.5 py-1.5 rounded-lg transition-all text-slate-300 hover:text-white hover:bg-white/5">
+          Theme Studio
+        </button>
+        <button onclick="switchView('playerstudio')" id="tab-btn-playerstudio" class="px-3.5 py-1.5 rounded-lg transition-all text-slate-300 hover:text-white hover:bg-white/5">
+          Player Studio
+        </button>
+        <button onclick="switchView('navstudio')" id="tab-btn-navstudio" class="px-3.5 py-1.5 rounded-lg transition-all text-slate-300 hover:text-white hover:bg-white/5">
+          Nav Shapes
+        </button>
+        <button onclick="toggleLyricsPanel()" id="tab-btn-lyrics" class="px-3.5 py-1.5 rounded-lg transition-all text-slate-300 hover:text-white hover:bg-white/5 flex items-center space-x-1.5">
+          <span>Караоке LRC</span>
+          <span class="w-2 h-2 rounded-full bg-[#00E5FF] animate-pulse"></span>
+        </button>
+      </div>
+
+      <!-- Active Source Quality Indicator -->
+      <div id="source-badge-top" class="flex items-center space-x-2 px-3 py-1.5 rounded-full bg-amber-400/10 border border-amber-400/30 text-xs font-semibold text-amber-300">
+        <span class="w-2 h-2 rounded-full bg-amber-400 animate-ping"></span>
+        <span id="top-source-text">Яндекс Музыка • 320 kbps</span>
+      </div>
+    </header>
+
+    <!-- Main Workspace (Sidebar + Content + Lyrics Drawer) -->
+    <div class="flex flex-1 overflow-hidden relative">
+
+      <!-- Left Sidebar (Navigation & Multi-Sources) -->
+      <aside class="w-64 border-r border-[var(--levyra-border)] bg-black/20 flex flex-col justify-between p-4 select-none shrink-0">
+        <div class="space-y-6">
+          
+          <!-- Brand Logo -->
+          <div class="flex items-center space-x-3 px-2">
+            <div class="w-10 h-10 flex items-center justify-center font-black text-white text-lg shadow-lg" style="border-radius: var(--levyra-button-radius); background: linear-gradient(135deg, var(--levyra-accent), var(--levyra-accent-secondary)); box-shadow: 0 4px 20px var(--levyra-accent-glow);">
+              L
+            </div>
+            <div>
+              <h1 class="font-extrabold text-sm tracking-wide text-white">LEVYRA</h1>
+              <p class="text-xs text-slate-400">Expressive Desktop</p>
+            </div>
+          </div>
+
+          <!-- Active Music Source Switcher -->
+          <div class="p-3 bg-white/5 border border-white/10 transition-all cursor-pointer hover:border-white/20" style="border-radius: var(--levyra-button-radius);" onclick="cycleActiveSource()">
+            <div class="flex items-center justify-between text-xs">
+              <span class="font-bold text-slate-200" id="sidebar-source-name">Яндекс Музыка</span>
+              <span class="text-[11px] px-1.5 py-0.5 rounded bg-amber-400/20 text-amber-300 font-bold" id="sidebar-source-tag">320k</span>
+            </div>
+            <p class="text-xs text-slate-400 mt-1" id="sidebar-source-sub">Кликните для смены источника</p>
+          </div>
+
+          <!-- Navigation Links -->
+          <div class="space-y-1">
+            <div class="text-xs font-bold text-slate-500 uppercase tracking-wider px-2 mb-2">Навигация</div>
+            
+            <a href="#" onclick="switchView('home')" class="flex items-center space-x-3 px-3 py-2.5 text-xs font-bold text-white transition-all bg-white/10" style="border-radius: var(--levyra-button-radius);">
+              <svg class="w-4 h-4 text-[var(--levyra-accent)]" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>
+              <span>Главная</span>
+            </a>
+
+            <a href="#" class="flex items-center justify-between px-3 py-2 text-xs font-medium text-slate-400 hover:text-white hover:bg-white/5 transition" style="border-radius: var(--levyra-button-radius);">
+              <div class="flex items-center space-x-3">
+                <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+                <span>Поиск</span>
+              </div>
+              <span class="text-[11px] px-1.5 py-0.5 rounded bg-white/10 text-slate-400 font-mono">⌘K</span>
+            </a>
+
+            <a href="#" onclick="triggerMyWaveRadio()" class="flex items-center justify-between px-3 py-2 text-xs font-bold text-rose-400 hover:bg-rose-500/10 transition" style="border-radius: var(--levyra-button-radius);">
+              <div class="flex items-center space-x-3">
+                <svg class="w-4 h-4 text-rose-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+                <span>Моя волна</span>
+              </div>
+              <span class="text-[10px] px-1.5 py-0.5 rounded bg-rose-500/20 text-rose-300 font-black">LIVE</span>
+            </a>
+
+            <a href="#" class="flex items-center space-x-3 px-3 py-2 text-xs font-medium text-slate-400 hover:text-white hover:bg-white/5 transition" style="border-radius: var(--levyra-button-radius);">
+              <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/></svg>
+              <span>Медиатека</span>
+            </a>
+          </div>
+
+          <!-- Personal Collections -->
+          <div class="space-y-1">
+            <div class="text-xs font-bold text-slate-500 uppercase tracking-wider px-2 mb-2">Моя Музыка</div>
+            <div class="flex items-center justify-between px-3 py-1.5 text-xs text-slate-300 hover:text-white cursor-pointer transition">
+              <span class="flex items-center space-x-2.5">
+                <svg class="w-3.5 h-3.5 text-red-400" fill="currentColor" viewBox="0 0 24 24"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>
+                <span>Любимые треки</span>
+              </span>
+              <span class="text-slate-500 text-xs" id="fav-count-badge">1,248</span>
+            </div>
+            <div class="flex items-center justify-between px-3 py-1.5 text-xs text-slate-300 hover:text-white cursor-pointer transition">
+              <span class="flex items-center space-x-2.5">
+                <svg class="w-3.5 h-3.5 text-purple-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16M4 18h7"/></svg>
+                <span>Плейлисты</span>
+              </span>
+              <span class="text-slate-500 text-xs">18</span>
+            </div>
+            <div class="flex items-center justify-between px-3 py-1.5 text-xs text-slate-300 hover:text-white cursor-pointer transition">
+              <span class="flex items-center space-x-2.5">
+                <svg class="w-3.5 h-3.5 text-emerald-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+                <span>Загрузки (Offline)</span>
+              </span>
+              <span class="text-slate-500 text-xs">340</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- User Profile Pill -->
+        <div class="p-2.5 bg-white/5 border border-white/10 flex items-center space-x-3" style="border-radius: var(--levyra-button-radius);">
+          <div class="w-8 h-8 rounded-full bg-gradient-to-tr from-cyan-400 to-purple-500 flex items-center justify-center font-bold text-xs text-white">
+            K
+          </div>
+          <div class="overflow-hidden">
+            <p class="text-xs font-bold text-white truncate">Kola Aleksandrov</p>
+            <p class="text-[11px] text-emerald-400 flex items-center space-x-1">
+              <span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+              <span>Яндекс Плюс активен</span>
+            </p>
+          </div>
+        </div>
+      </aside>
+
+      <!-- Main Center Content Area -->
+      <main class="flex-1 overflow-y-auto p-6 space-y-6 pb-28 relative">
+
+        <!-- VIEW 1: HOME SCREEN (DEFAULT) -->
+        <div id="view-home" class="space-y-6 transition-all duration-300">
+          
+          <!-- Hero Section: Интерактивная «Моя волна» -->
+          <div class="relative overflow-hidden p-6 border border-white/10 shadow-2xl transition-all duration-500" style="border-radius: var(--levyra-radius); background: linear-gradient(135deg, rgba(2, 48, 71, 0.9), rgba(27, 16, 56, 0.95), rgba(54, 12, 56, 0.9));">
+            
+            <!-- Vinyl Disk with Rotating Rotor Art -->
+            <div class="flex flex-col md:flex-row items-center gap-6">
+              <div class="relative w-36 h-36 shrink-0 cursor-pointer group" onclick="togglePlayState()">
+                <div id="vinyl-disk" class="w-36 h-36 rounded-full bg-[#0D1117] border-2 border-white/20 flex items-center justify-center shadow-2xl relative transition-all duration-700 vinyl-spinning">
+                  <div class="w-28 h-28 rounded-full border border-white/10 flex items-center justify-center">
+                    <div class="w-20 h-20 rounded-full border border-white/10 flex items-center justify-center">
+                      <!-- Center Album Sticker -->
+                      <div id="vinyl-sticker" class="w-14 h-14 rounded-full bg-gradient-to-tr from-rose-500 to-indigo-500 flex items-center justify-center shadow-inner">
+                        <div class="w-3.5 h-3.5 rounded-full bg-black border-2 border-amber-300"></div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <!-- Play Overlay Icon on Hover -->
+                <div class="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/40 rounded-full">
+                  <svg class="w-8 h-8 text-white" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+                </div>
+              </div>
+
+              <!-- Station Details & Mood Chips -->
+              <div class="flex-1 space-y-3">
+                <div class="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-cyan-400/15 border border-cyan-400/30 text-xs font-extrabold text-[var(--levyra-accent)]">
+                  <span>●</span>
+                  <span>ЯНДЕКС • МОЯ ВОЛНА</span>
+                </div>
+                <h2 class="text-2xl font-black text-white tracking-tight">Бесконечный поток под ваш вкус</h2>
+                <p class="text-xs text-slate-300 max-w-xl">
+                  Индивидуальные рекомендации на основе нейросетей, настроения и истории прослушиваний.
+                </p>
+
+                <!-- Interactive Mood Buttons -->
+                <div class="flex flex-wrap gap-2 pt-1">
+                  <button onclick="setWaveMood('⚡ Бодрое', '#00E5FF', 'Дайте танк (!) — Смех')" class="mood-btn px-3.5 py-1.5 rounded-full text-xs font-bold transition-all bg-[var(--levyra-accent)] text-black shadow-md">
+                    ⚡ Бодрое
+                  </button>
+                  <button onclick="setWaveMood('✨ Радостное', '#FF2A85', 'The Weeknd — Blinding Lights')" class="mood-btn px-3.5 py-1.5 rounded-full text-xs font-bold transition-all bg-white/10 text-white hover:bg-white/20">
+                    ✨ Радостное
+                  </button>
+                  <button onclick="setWaveMood('🌊 Спокойное', '#00FF87', 'Скриптонит — Положение')" class="mood-btn px-3.5 py-1.5 rounded-full text-xs font-bold transition-all bg-white/10 text-white hover:bg-white/20">
+                    🌊 Спокойное
+                  </button>
+                  <button onclick="setWaveMood('🌙 Ночное', '#8B5CF6', 'Fred again.. — Danielle')" class="mood-btn px-3.5 py-1.5 rounded-full text-xs font-bold transition-all bg-white/10 text-white hover:bg-white/20">
+                    🌙 Ночное
+                  </button>
+                </div>
+              </div>
+
+              <!-- Quick Action Big Play -->
+              <div class="shrink-0 flex items-center space-x-3">
+                <button onclick="toggleFavorite()" class="w-11 h-11 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center transition" title="Нравится">
+                  <svg id="hero-heart-icon" class="w-5 h-5 text-red-400" fill="currentColor" viewBox="0 0 24 24"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>
+                </button>
+                <button onclick="togglePlayState()" id="hero-play-btn" class="w-14 h-14 rounded-full flex items-center justify-center text-black font-black shadow-2xl transition-all hover:scale-105" style="background: var(--levyra-accent); box-shadow: 0 0 25px var(--levyra-accent-glow);">
+                  <svg class="w-7 h-7" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Bento Grid: Quick Picks (Альбомы и Плейлисты) -->
+          <div class="space-y-3">
+            <div class="flex items-center justify-between">
+              <h3 class="text-base font-extrabold text-white">Быстрый выбор и альбомы</h3>
+              <span class="text-xs font-bold text-[var(--levyra-accent)] hover:underline cursor-pointer">Смотреть все (18) →</span>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              <!-- Bento Card 1 -->
+              <div class="p-3.5 bg-white/5 border border-white/10 hover:border-white/20 transition-all flex items-center space-x-3 group cursor-pointer" style="border-radius: var(--levyra-radius);" onclick="playTrack('Смех', 'Дайте танк (!)', 'from-red-500 to-amber-500', 'Яндекс • 320k')">
+                <div class="w-14 h-14 bg-gradient-to-tr from-red-500 to-amber-500 shadow-md flex items-center justify-center font-black text-white shrink-0 group-hover:scale-105 transition-transform" style="border-radius: var(--levyra-button-radius);">
+                  ❤️
+                </div>
+                <div class="overflow-hidden flex-1">
+                  <h4 class="text-xs font-bold text-white truncate">Любимые треки</h4>
+                  <p class="text-xs text-slate-400">Яндекс Музыка</p>
+                  <p class="text-[11px] font-bold text-cyan-400 mt-0.5">1,248 треков</p>
+                </div>
+              </div>
+
+              <!-- Bento Card 2 -->
+              <div class="p-3.5 bg-white/5 border border-white/10 hover:border-white/20 transition-all flex items-center space-x-3 group cursor-pointer" style="border-radius: var(--levyra-radius);" onclick="playTrack('Плейлист Дня', 'Яндекс Нейросеть', 'from-purple-500 to-cyan-400', 'Яндекс • 320k')">
+                <div class="w-14 h-14 bg-gradient-to-tr from-purple-500 to-cyan-400 shadow-md flex items-center justify-center font-black text-white shrink-0 group-hover:scale-105 transition-transform" style="border-radius: var(--levyra-button-radius);">
+                  ☀️
+                </div>
+                <div class="overflow-hidden flex-1">
+                  <h4 class="text-xs font-bold text-white truncate">Плейлист Дня</h4>
+                  <p class="text-xs text-slate-400">Каждое утро</p>
+                  <p class="text-[11px] font-bold text-purple-400 mt-0.5">Обновлено</p>
+                </div>
+              </div>
+
+              <!-- Bento Card 3 -->
+              <div class="p-3.5 bg-white/5 border border-white/10 hover:border-white/20 transition-all flex items-center space-x-3 group cursor-pointer" style="border-radius: var(--levyra-radius);" onclick="playTrack('Danielle', 'Fred again..', 'from-emerald-400 to-cyan-500', 'SoundCloud')">
+                <div class="w-14 h-14 bg-gradient-to-tr from-emerald-400 to-cyan-500 shadow-md flex items-center justify-center font-black text-white shrink-0 group-hover:scale-105 transition-transform" style="border-radius: var(--levyra-button-radius);">
+                  ⚡
+                </div>
+                <div class="overflow-hidden flex-1">
+                  <h4 class="text-xs font-bold text-white truncate">SoundCloud Mix</h4>
+                  <p class="text-xs text-slate-400">Deep & Bass</p>
+                  <p class="text-[11px] font-bold text-emerald-400 mt-0.5">SoundCloud</p>
+                </div>
+              </div>
+
+              <!-- Bento Card 4 -->
+              <div class="p-3.5 bg-white/5 border border-white/10 hover:border-white/20 transition-all flex items-center space-x-3 group cursor-pointer" style="border-radius: var(--levyra-radius);" onclick="playTrack('Blinding Lights', 'The Weeknd', 'from-pink-500 to-purple-600', 'YouTube HQ')">
+                <div class="w-14 h-14 bg-gradient-to-tr from-pink-500 to-purple-600 shadow-md flex items-center justify-center font-black text-white shrink-0 group-hover:scale-105 transition-transform" style="border-radius: var(--levyra-button-radius);">
+                  🔥
+                </div>
+                <div class="overflow-hidden flex-1">
+                  <h4 class="text-xs font-bold text-white truncate">Премьеры недели</h4>
+                  <p class="text-xs text-slate-400">Чарты релиза</p>
+                  <p class="text-[11px] font-bold text-pink-400 mt-0.5">Новинки</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Data-Dense Track Table -->
+          <div class="space-y-3">
+            <h3 class="text-base font-extrabold text-white">Сейчас слушают • Топ треки</h3>
+            
+            <div class="bg-black/20 border border-white/10 divide-y divide-white/5 overflow-hidden" style="border-radius: var(--levyra-radius);">
+              <!-- Track Row 1 (Playing) -->
+              <div class="p-3.5 flex items-center justify-between hover:bg-white/5 transition cursor-pointer" onclick="playTrack('Смех', 'Дайте танк (!)', 'from-red-500 to-amber-500', 'Яндекс • 320k')">
+                <div class="flex items-center space-x-4">
+                  <!-- Equalizer indicator -->
+                  <div id="eq-container" class="w-5 flex items-end justify-center space-x-0.5 h-5 eq-playing">
+                    <span class="w-1 bg-[var(--levyra-accent)] rounded-full bar-1"></span>
+                    <span class="w-1 bg-[var(--levyra-accent)] rounded-full bar-2"></span>
+                    <span class="w-1 bg-[var(--levyra-accent)] rounded-full bar-3"></span>
+                  </div>
+                  <div class="w-10 h-10 rounded-lg bg-gradient-to-tr from-red-500 to-amber-500 shrink-0"></div>
+                  <div>
+                    <p class="text-xs font-extrabold text-[var(--levyra-accent)]" id="row-title-1">Смех</p>
+                    <p class="text-xs text-slate-400">Дайте танк (!)</p>
+                  </div>
+                </div>
+                <div class="hidden md:block text-xs text-slate-300">Человеко-часы</div>
+                <div class="flex items-center space-x-4">
+                  <span class="text-xs px-2.5 py-1 rounded-full bg-amber-400/15 text-amber-300 font-bold border border-amber-400/30">Яндекс • 320k</span>
+                  <button class="text-red-400 hover:scale-110 transition"><svg class="w-4 h-4 fill-current" viewBox="0 0 24 24"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg></button>
+                  <span class="text-xs text-[var(--levyra-accent)] font-mono font-bold">03:14</span>
+                </div>
+              </div>
+
+              <!-- Track Row 2 -->
+              <div class="p-3.5 flex items-center justify-between hover:bg-white/5 transition cursor-pointer" onclick="playTrack('Положение', 'Скриптонит', 'from-indigo-600 to-purple-400', 'Яндекс • 320k')">
+                <div class="flex items-center space-x-4">
+                  <span class="w-5 text-center text-xs text-slate-500 font-bold">2</span>
+                  <div class="w-10 h-10 rounded-lg bg-gradient-to-tr from-indigo-600 to-purple-400 shrink-0"></div>
+                  <div>
+                    <p class="text-xs font-extrabold text-white">Положение</p>
+                    <p class="text-xs text-slate-400">Скриптонит</p>
+                  </div>
+                </div>
+                <div class="hidden md:block text-xs text-slate-400">Уроборос: Улица 36</div>
+                <div class="flex items-center space-x-4">
+                  <span class="text-xs px-2.5 py-1 rounded-full bg-amber-400/15 text-amber-300 font-bold border border-amber-400/30">Яндекс • 320k</span>
+                  <button class="text-slate-500 hover:text-red-400 transition"><svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"/></svg></button>
+                  <span class="text-xs text-slate-400 font-mono">04:22</span>
+                </div>
+              </div>
+
+              <!-- Track Row 3 -->
+              <div class="p-3.5 flex items-center justify-between hover:bg-white/5 transition cursor-pointer" onclick="playTrack('Danielle (smile on my face)', 'Fred again..', 'from-emerald-400 to-cyan-500', 'SoundCloud')">
+                <div class="flex items-center space-x-4">
+                  <span class="w-5 text-center text-xs text-slate-500 font-bold">3</span>
+                  <div class="w-10 h-10 rounded-lg bg-gradient-to-tr from-emerald-400 to-cyan-500 shrink-0"></div>
+                  <div>
+                    <p class="text-xs font-extrabold text-white">Danielle (smile on my face)</p>
+                    <p class="text-xs text-slate-400">Fred again..</p>
+                  </div>
+                </div>
+                <div class="hidden md:block text-xs text-slate-400">Actual Life 3</div>
+                <div class="flex items-center space-x-4">
+                  <span class="text-xs px-2.5 py-1 rounded-full bg-rose-500/15 text-rose-300 font-bold border border-rose-500/30">SoundCloud</span>
+                  <button class="text-slate-500 hover:text-red-400 transition"><svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"/></svg></button>
+                  <span class="text-xs text-slate-400 font-mono">03:21</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- VIEW 2: THEME STUDIO (ИНТЕРАКТИВНЫЙ ВЫБОР 16 ТЕМ) -->
+        <div id="view-themestudio" class="hidden space-y-6">
+          <div class="p-6 bg-white/5 border border-white/10" style="border-radius: var(--levyra-radius);">
+            <div class="flex items-center justify-between mb-4">
+              <div>
+                <h3 class="text-xl font-black text-white">Theme Studio & 16 Цветовых Палитр</h3>
+                <p class="text-xs text-slate-400 mt-1">Кликните на любую тему для моментального переключения оформления всего приложения</p>
+              </div>
+              <span class="text-xs px-3 py-1 rounded-full bg-cyan-400/20 text-cyan-300 font-bold border border-cyan-400/40" id="current-theme-label">
+                Текущая: Cosmic Glass
+              </span>
+            </div>
+
+            <!-- 16 Themes Interactive Matrix -->
+            <div class="grid grid-cols-2 sm:grid-cols-4 gap-3.5">
+              <button onclick="applyTheme('theme-cosmic', 'Cosmic Glass', '#00E5FF', '#7C4DFF')" class="p-3 rounded-xl border border-white/15 bg-black/40 text-left hover:border-cyan-400 transition-all group">
+                <div class="w-full h-8 rounded-lg bg-gradient-to-r from-[#00E5FF] to-[#7C4DFF] mb-2 shadow"></div>
+                <p class="text-xs font-bold text-white group-hover:text-cyan-400">Cosmic Glass</p>
+                <p class="text-[11px] text-slate-400">#00E5FF • #7C4DFF</p>
+              </button>
+
+              <button onclick="applyTheme('theme-amoled', 'Black AMOLED', '#FFFFFF', '#8E9AA8')" class="p-3 rounded-xl border border-white/15 bg-black/40 text-left hover:border-white transition-all group">
+                <div class="w-full h-8 rounded-lg bg-black border border-white/20 mb-2"></div>
+                <p class="text-xs font-bold text-white group-hover:text-white">Black AMOLED</p>
+                <p class="text-[11px] text-slate-400">Чистый черный 0#</p>
+              </button>
+
+              <button onclick="applyTheme('theme-aura', 'Levyra Aura', '#FF2A85', '#8B5CF6')" class="p-3 rounded-xl border border-white/15 bg-black/40 text-left hover:border-rose-400 transition-all group">
+                <div class="w-full h-8 rounded-lg bg-gradient-to-r from-[#FF2A85] via-[#8B5CF6] to-[#00D2FF] mb-2 shadow"></div>
+                <p class="text-xs font-bold text-white group-hover:text-rose-400">Levyra Aura</p>
+                <p class="text-[11px] text-slate-400">Apple Music Mesh</p>
+              </button>
+
+              <button onclick="applyTheme('theme-neon', 'Neon Cyan', '#00F0FF', '#0066FF')" class="p-3 rounded-xl border border-white/15 bg-black/40 text-left hover:border-cyan-300 transition-all group">
+                <div class="w-full h-8 rounded-lg bg-gradient-to-r from-[#00F0FF] to-[#0066FF] mb-2 shadow"></div>
+                <p class="text-xs font-bold text-white group-hover:text-cyan-300">Neon Cyan</p>
+                <p class="text-[11px] text-slate-400">Cyberpunk Glow</p>
+              </button>
+
+              <button onclick="applyTheme('theme-aurora', 'Aurora Borealis', '#00FF87', '#60EFFF')" class="p-3 rounded-xl border border-white/15 bg-black/40 text-left hover:border-emerald-400 transition-all group">
+                <div class="w-full h-8 rounded-lg bg-gradient-to-r from-[#00FF87] to-[#60EFFF] mb-2 shadow"></div>
+                <p class="text-xs font-bold text-white group-hover:text-emerald-400">Aurora Borealis</p>
+                <p class="text-[11px] text-slate-400">Северное сияние</p>
+              </button>
+
+              <button onclick="applyTheme('theme-ember', 'Ember Sunset', '#FF416C', '#FF4B2B')" class="p-3 rounded-xl border border-white/15 bg-black/40 text-left hover:border-red-400 transition-all group">
+                <div class="w-full h-8 rounded-lg bg-gradient-to-r from-[#FF416C] to-[#FF4B2B] mb-2 shadow"></div>
+                <p class="text-xs font-bold text-white group-hover:text-red-400">Ember Sunset</p>
+                <p class="text-[11px] text-slate-400">Закатный костер</p>
+              </button>
+
+              <button onclick="applyTheme('theme-cosmic', 'Oceanic Deep', '#1BFFFF', '#2E3192')" class="p-3 rounded-xl border border-white/15 bg-black/40 text-left hover:border-cyan-400 transition-all group">
+                <div class="w-full h-8 rounded-lg bg-gradient-to-r from-[#2E3192] to-[#1BFFFF] mb-2 shadow"></div>
+                <p class="text-xs font-bold text-white group-hover:text-cyan-400">Oceanic Deep</p>
+                <p class="text-[11px] text-slate-400">Морская глубина</p>
+              </button>
+
+              <button onclick="applyTheme('theme-aura', 'Synthwave Sunset', '#F72585', '#7209B7')" class="p-3 rounded-xl border border-white/15 bg-black/40 text-left hover:border-fuchsia-400 transition-all group">
+                <div class="w-full h-8 rounded-lg bg-gradient-to-r from-[#F72585] to-[#7209B7] mb-2 shadow"></div>
+                <p class="text-xs font-bold text-white group-hover:text-fuchsia-400">Synthwave Sunset</p>
+                <p class="text-[11px] text-slate-400">Ретро-неон</p>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- VIEW 3: PLAYER STUDIO (ИНТЕРАКТИВНЫЕ РЕЖИМЫ ПЛЕЕРА) -->
+        <div id="view-playerstudio" class="hidden space-y-6">
+          <div class="p-6 bg-white/5 border border-white/10 space-y-5" style="border-radius: var(--levyra-radius);">
+            <div>
+              <h3 class="text-xl font-black text-white">Player Studio — Режимы нижнего плеера</h3>
+              <p class="text-xs text-slate-400 mt-1">Выберите стиль оформления панели плеера на десктопе</p>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <!-- Style 1: Floating Glass Pill -->
+              <div onclick="setPlayerStyle('floating')" class="p-4 rounded-xl border-2 border-cyan-400 bg-white/5 cursor-pointer hover:bg-white/10 transition">
+                <div class="flex items-center justify-between mb-2">
+                  <span class="text-xs font-bold text-white">Floating Glass Pill</span>
+                  <span class="text-[10px] px-1.5 py-0.5 rounded bg-cyan-400 text-black font-extrabold">АКТИВЕН</span>
+                </div>
+                <p class="text-xs text-slate-400">Парящая капсула со стеклянным размытием в стиле macOS Island над контентом.</p>
+              </div>
+
+              <!-- Style 2: Full Docked Bar -->
+              <div onclick="setPlayerStyle('docked')" class="p-4 rounded-xl border border-white/15 bg-white/5 cursor-pointer hover:border-white/30 transition">
+                <div class="flex items-center justify-between mb-2">
+                  <span class="text-xs font-bold text-white">Full Docked Bar</span>
+                </div>
+                <p class="text-xs text-slate-400">Классическая панель плеера во всю ширину окна, закрепленная в самом низу экрана.</p>
+              </div>
+
+              <!-- Style 3: Compact Island -->
+              <div onclick="setPlayerStyle('compact')" class="p-4 rounded-xl border border-white/15 bg-white/5 cursor-pointer hover:border-white/30 transition">
+                <div class="flex items-center justify-between mb-2">
+                  <span class="text-xs font-bold text-white">Compact Island</span>
+                </div>
+                <p class="text-xs text-slate-400">Минималистичный центрированный остров только с необходимыми кнопками.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- VIEW 4: NAVIGATION STUDIO & SHAPES -->
+        <div id="view-navstudio" class="hidden space-y-6">
+          <div class="p-6 bg-white/5 border border-white/10 space-y-5" style="border-radius: var(--levyra-radius);">
+            <div>
+              <h3 class="text-xl font-black text-white">Navigation Studio — Геометрия Material Shapes</h3>
+              <p class="text-xs text-slate-400 mt-1">Выберите геометрическую форму кнопок, карточек и обложек</p>
+            </div>
+
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <button onclick="setShape('shape-squircle', 'Squircle')" class="p-4 rounded-2xl border border-cyan-400 bg-white/5 text-left transition hover:bg-white/10">
+                <div class="w-12 h-12 rounded-[18px] bg-gradient-to-tr from-cyan-400 to-purple-500 mb-2 shadow"></div>
+                <p class="text-xs font-bold text-white">Squircle</p>
+                <p class="text-[11px] text-cyan-300">Суперэллипс Ламе</p>
+              </button>
+
+              <button onclick="setShape('shape-cookie', 'Cookie')" class="p-4 rounded-2xl border border-white/15 bg-white/5 text-left transition hover:border-white">
+                <div class="w-12 h-12 bg-gradient-to-tr from-rose-400 to-amber-400 mb-2 shadow" style="border-radius: 22px 6px 22px 6px;"></div>
+                <p class="text-xs font-bold text-white">Cookie</p>
+                <p class="text-[11px] text-slate-400">Органическое печенье</p>
+              </button>
+
+              <button onclick="setShape('shape-clover', 'Clover')" class="p-4 rounded-2xl border border-white/15 bg-white/5 text-left transition hover:border-white">
+                <div class="w-12 h-12 bg-gradient-to-tr from-emerald-400 to-cyan-400 mb-2 shadow" style="border-radius: 12px 24px 12px 24px;"></div>
+                <p class="text-xs font-bold text-white">Clover</p>
+                <p class="text-[11px] text-slate-400">Четырехлистник</p>
+              </button>
+
+              <button onclick="setShape('shape-pill', 'Pill')" class="p-4 rounded-2xl border border-white/15 bg-white/5 text-left transition hover:border-white">
+                <div class="w-12 h-12 rounded-full bg-gradient-to-tr from-purple-500 to-pink-500 mb-2 shadow"></div>
+                <p class="text-xs font-bold text-white">Pill</p>
+                <p class="text-[11px] text-slate-400">Капсула</p>
+              </button>
+            </div>
+          </div>
+        </div>
+
+      </main>
+
+      <!-- Right Drawer: Lyrics Studio (Караоке LRC & Share Card) -->
+      <aside id="lyrics-panel" class="w-80 border-l border-[var(--levyra-border)] bg-black/40 backdrop-blur-3xl flex flex-col justify-between p-5 transition-all duration-500 relative z-20">
+        <div class="space-y-4">
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-black uppercase tracking-wider text-[var(--levyra-accent)]">LYRICS STUDIO • LRC</span>
+            <button onclick="toggleLyricsPanel()" class="text-slate-400 hover:text-white text-xs font-bold">✕ Закрыть</button>
+          </div>
+
+          <!-- Synced Lyrics Lines -->
+          <div class="space-y-4 pt-4 font-bold text-sm">
+            <p class="text-slate-600 transition-all hover:text-slate-400 cursor-pointer">Я смотрю на тебя сквозь туман,</p>
+            <p class="text-slate-500 transition-all hover:text-slate-400 cursor-pointer">В этом городе всё так знакомо.</p>
+            <p class="text-slate-400 transition-all hover:text-slate-300 cursor-pointer">Фонари зажигаются снова,</p>
+
+            <!-- Active Glowing Line -->
+            <div class="p-3.5 rounded-xl border border-cyan-400/40 bg-cyan-400/10 shadow-lg text-[var(--levyra-accent)] text-base font-extrabold transition-all duration-300" style="box-shadow: 0 0 25px var(--levyra-accent-glow);">
+              «И смеюсь, потому что мне весело!»
+            </div>
+
+            <p class="text-slate-400 transition-all hover:text-slate-300 cursor-pointer">Среди серых домов и витрин,</p>
+            <p class="text-slate-500 transition-all hover:text-slate-400 cursor-pointer">Мы останемся здесь до утра,</p>
+            <p class="text-slate-600 transition-all hover:text-slate-400 cursor-pointer">Пока музыка бьёт через край...</p>
+          </div>
+        </div>
+
+        <!-- Share Quote Card Button -->
+        <button onclick="openShareModal()" class="w-full py-2.5 rounded-xl bg-white/10 hover:bg-white/20 border border-white/15 text-xs font-bold text-white flex items-center justify-center space-x-2 transition">
+          <svg class="w-4 h-4 text-[var(--levyra-accent)]" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z"/></svg>
+          <span>Поделиться цитатой</span>
+        </button>
+      </aside>
+    </div>
+
+    <!-- Persistent Floating Player Dock -->
+    <div id="player-dock" class="absolute bottom-4 left-6 right-6 p-3.5 bg-black/85 backdrop-blur-2xl border border-white/15 rounded-2xl shadow-[0_15px_35px_rgba(0,0,0,0.8)] flex items-center justify-between z-30 transition-all duration-300">
+      
+      <!-- Track Details -->
+      <div class="flex items-center space-x-3.5 w-1/4">
+        <div id="player-cover" class="w-12 h-12 rounded-xl bg-gradient-to-tr from-red-500 to-amber-500 shadow-md shrink-0 transition-transform"></div>
+        <div class="overflow-hidden">
+          <p id="player-title" class="text-xs font-black text-white truncate">Смех</p>
+          <p id="player-artist" class="text-xs text-slate-400 truncate">Дайте танк (!)</p>
+          <span id="player-source-pill" class="text-[10px] px-1.5 py-0.2 rounded bg-amber-400/20 text-amber-300 font-extrabold">Яндекс 320k</span>
+        </div>
+        <button onclick="toggleFavorite()" class="ml-1 text-red-400 hover:scale-110 transition">
+          <svg id="dock-heart-icon" class="w-4 h-4 fill-current" viewBox="0 0 24 24"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>
+        </button>
+      </div>
+
+      <!-- Playback Transport & Scrubber -->
+      <div class="flex flex-col items-center space-y-1.5 w-2/4">
+        <div class="flex items-center space-x-5">
+          <button class="text-slate-400 hover:text-white text-xs transition">🔀</button>
+          <button class="text-slate-300 hover:text-white transition"><svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M6 6h2v12H6zm3.5 6l8.5 6V6z"/></svg></button>
+          <button onclick="togglePlayState()" id="dock-play-btn" class="w-9 h-9 rounded-full flex items-center justify-center text-black font-black transition-all hover:scale-105" style="background: var(--levyra-accent);">
+            <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
+          </button>
+          <button class="text-slate-300 hover:text-white transition"><svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z"/></svg></button>
+          <button class="text-[var(--levyra-accent)] text-xs transition">🔁</button>
+        </div>
+
+        <!-- Interactive Scrubber Seek Bar -->
+        <div class="w-full max-w-md flex items-center space-x-2.5 text-[11px] font-mono">
+          <span id="time-current" class="text-[var(--levyra-accent)] font-bold">01:24</span>
+          <div class="flex-1 h-1.5 bg-white/10 rounded-full cursor-pointer relative overflow-hidden" onclick="seekTrack(event)">
+            <div id="seek-progress" class="h-full bg-[var(--levyra-accent)] rounded-full" style="width: 44%;"></div>
+          </div>
+          <span class="text-slate-400 font-medium">03:14</span>
+        </div>
+      </div>
+
+      <!-- Right Tools: Volume, Lyrics Toggle -->
+      <div class="flex items-center justify-end space-x-3.5 w-1/4">
+        <button onclick="toggleLyricsPanel()" class="px-2 py-1 rounded bg-cyan-400/20 text-cyan-300 font-extrabold text-xs hover:bg-cyan-400/30 transition">
+          LRC
+        </button>
+        <div class="flex items-center space-x-2">
+          <svg class="w-4 h-4 text-slate-400" fill="currentColor" viewBox="0 0 24 24"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02z"/></svg>
+          <div class="w-16 h-1 bg-white/20 rounded-full overflow-hidden cursor-pointer">
+            <div class="w-3/4 h-full bg-[var(--levyra-accent)] rounded-full"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Share Quote Modal -->
+  <div id="share-modal" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4 hidden">
+    <div class="bg-slate-900 border border-white/20 p-6 rounded-2xl max-w-sm w-full space-y-4 shadow-2xl">
+      <div class="flex justify-between items-center">
+        <h4 class="text-sm font-bold text-white">Карточка цитаты</h4>
+        <button onclick="closeShareModal()" class="text-slate-400 hover:text-white">✕</button>
+      </div>
+      <div class="p-5 rounded-xl bg-gradient-to-tr from-rose-500 via-purple-600 to-indigo-600 text-white space-y-3 shadow-xl">
+        <p class="text-xs font-bold text-white/80">Дайте танк (!) — Смех</p>
+        <p class="text-lg font-black tracking-tight leading-snug">«И смеюсь, потому что мне весело!»</p>
+        <div class="flex items-center justify-between pt-2 border-t border-white/20 text-xs">
+          <span class="font-bold">LEVYRA APP</span>
+          <span class="text-white/80">levyra.app</span>
+        </div>
+      </div>
+      <button onclick="alert('Карточка скопирована в буфер обмена!'); closeShareModal();" class="w-full py-2.5 rounded-xl bg-[var(--levyra-accent)] text-black font-extrabold text-xs shadow-lg">
+        Скопировать в буфер обмена
+      </button>
+    </div>
+  </div>
+
+  <!-- JavaScript Logic -->
+  <script>
+    let isPlaying = true;
+    let isFavorite = true;
+    let sources = [
+      { name: 'Яндекс Музыка', tag: '320k', sub: '320 kbps MP3 • ya.ru/device', top: 'Яндекс Музыка • 320 kbps', color: 'text-amber-300' },
+      { name: 'SoundCloud', tag: 'HQ', sub: 'HLS / MP3 • DJ ремиксы', top: 'SoundCloud • HQ Audio', color: 'text-rose-400' },
+      { name: 'YouTube Music', tag: 'OPUS', sub: 'LevyraExtractor 160k', top: 'YouTube Music • Lossless', color: 'text-cyan-400' }
+    ];
+    let sourceIdx = 0;
+
+    function switchView(viewName) {
+      document.getElementById('view-home').classList.add('hidden');
+      document.getElementById('view-themestudio').classList.add('hidden');
+      document.getElementById('view-playerstudio').classList.add('hidden');
+      document.getElementById('view-navstudio').classList.add('hidden');
+
+      document.getElementById(`view-${viewName}`).classList.remove('hidden');
+
+      const tabs = ['home', 'themestudio', 'playerstudio', 'navstudio'];
+      tabs.forEach(t => {
+        const btn = document.getElementById(`tab-btn-${t}`);
+        if (t === viewName) {
+          btn.style.background = 'var(--levyra-accent)';
+          btn.classList.add('text-black', 'font-bold');
+          btn.classList.remove('text-slate-300');
+        } else {
+          btn.style.background = 'transparent';
+          btn.classList.remove('text-black', 'font-bold');
+          btn.classList.add('text-slate-300');
+        }
+      });
+    }
+
+    function applyTheme(className, label, primary, secondary) {
+      const body = document.getElementById('app-body');
+      body.className = body.className.replace(/theme-\w+/g, '');
+      body.classList.add(className);
+
+      document.getElementById('current-theme-label').innerText = `Текущая: ${label}`;
+      document.getElementById('current-theme-label').style.borderColor = primary;
+      document.getElementById('current-theme-label').style.color = primary;
+
+      document.getElementById('orb-1').style.background = `radial-gradient(circle, ${primary}, transparent 70%)`;
+      document.getElementById('orb-2').style.background = `radial-gradient(circle, ${secondary}, transparent 70%)`;
+      
+      // Update active tab highlight
+      document.getElementById('tab-btn-home').style.background = primary;
+    }
+
+    function setShape(shapeClass, name) {
+      const body = document.getElementById('app-body');
+      body.className = body.className.replace(/shape-\w+/g, '');
+      body.classList.add(shapeClass);
+      alert(`Геометрия ${name} успешно применена ко всем кнопкам и карточкам!`);
+    }
+
+    function setPlayerStyle(style) {
+      const dock = document.getElementById('player-dock');
+      if (style === 'docked') {
+        dock.className = 'absolute bottom-0 left-0 right-0 p-4 bg-black/95 border-t border-white/20 flex items-center justify-between z-30 transition-all';
+      } else if (style === 'compact') {
+        dock.className = 'absolute bottom-4 left-1/4 right-1/4 p-3 bg-black/90 backdrop-blur-2xl border border-white/20 rounded-2xl flex items-center justify-between z-30 shadow-2xl transition-all';
+      } else {
+        dock.className = 'absolute bottom-4 left-6 right-6 p-3.5 bg-black/85 backdrop-blur-2xl border border-white/15 rounded-2xl shadow-[0_15px_35px_rgba(0,0,0,0.8)] flex items-center justify-between z-30 transition-all';
+      }
+    }
+
+    function togglePlayState() {
+      isPlaying = !isPlaying;
+      const vinyl = document.getElementById('vinyl-disk');
+      const eq = document.getElementById('eq-container');
+      const heroBtn = document.getElementById('hero-play-btn');
+      const dockBtn = document.getElementById('dock-play-btn');
+
+      if (isPlaying) {
+        vinyl.classList.add('vinyl-spinning');
+        eq.classList.add('eq-playing');
+        heroBtn.innerHTML = '<svg class=\"w-7 h-7\" fill=\"currentColor\" viewBox=\"0 0 24 24\"><path d=\"M6 19h4V5H6v14zm8-14v14h4V5h-4z\"/></svg>';
+        dockBtn.innerHTML = '<svg class=\"w-5 h-5\" fill=\"currentColor\" viewBox=\"0 0 24 24\"><path d=\"M6 19h4V5H6v14zm8-14v14h4V5h-4z\"/></svg>';
+      } else {
+        vinyl.classList.remove('vinyl-spinning');
+        eq.classList.remove('eq-playing');
+        heroBtn.innerHTML = '<svg class=\"w-7 h-7\" fill=\"currentColor\" viewBox=\"0 0 24 24\"><path d=\"M8 5v14l11-7z\"/></svg>';
+        dockBtn.innerHTML = '<svg class=\"w-5 h-5\" fill=\"currentColor\" viewBox=\"0 0 24 24\"><path d=\"M8 5v14l11-7z\"/></svg>';
+      }
+    }
+
+    function toggleFavorite() {
+      isFavorite = !isFavorite;
+      const heroHeart = document.getElementById('hero-heart-icon');
+      const dockHeart = document.getElementById('dock-heart-icon');
+      const countBadge = document.getElementById('fav-count-badge');
+      if (isFavorite) {
+        heroHeart.classList.add('text-red-400');
+        dockHeart.classList.add('text-red-400');
+        countBadge.innerText = '1,248';
+      } else {
+        heroHeart.classList.remove('text-red-400');
+        dockHeart.classList.remove('text-red-400');
+        countBadge.innerText = '1,247';
+      }
+    }
+
+    function playTrack(title, artist, gradientClass, badgeText) {
+      document.getElementById('player-title').innerText = title;
+      document.getElementById('player-artist').innerText = artist;
+      document.getElementById('player-source-pill').innerText = badgeText;
+      const cover = document.getElementById('player-cover');
+      cover.className = `w-12 h-12 rounded-xl bg-gradient-to-tr ${gradientClass} shadow-md shrink-0`;
+      if (!isPlaying) togglePlayState();
+    }
+
+    function setWaveMood(moodName, color, trackInfo) {
+      document.querySelectorAll('.mood-btn').forEach(btn => {
+        btn.classList.remove('bg-[var(--levyra-accent)]', 'text-black');
+        btn.classList.add('bg-white/10', 'text-white');
+      });
+      event.target.classList.add('bg-[var(--levyra-accent)]', 'text-black');
+      event.target.classList.remove('bg-white/10', 'text-white');
+      document.getElementById('player-title').innerText = trackInfo.split('—')[1]?.trim() || trackInfo;
+      document.getElementById('player-artist').innerText = trackInfo.split('—')[0]?.trim() || '';
+    }
+
+    function cycleActiveSource() {
+      sourceIdx = (sourceIdx + 1) % sources.length;
+      const s = sources[sourceIdx];
+      document.getElementById('sidebar-source-name').innerText = s.name;
+      document.getElementById('sidebar-source-tag').innerText = s.tag;
+      document.getElementById('sidebar-source-sub').innerText = s.sub;
+      document.getElementById('top-source-text').innerText = s.top;
+      document.getElementById('player-source-pill').innerText = s.name;
+    }
+
+    function toggleLyricsPanel() {
+      const panel = document.getElementById('lyrics-panel');
+      panel.classList.toggle('hidden');
+    }
+
+    function seekTrack(e) {
+      const rect = e.currentTarget.getBoundingClientRect();
+      const pct = Math.max(0, Math.min(100, ((e.clientX - rect.left) / rect.width) * 100));
+      document.getElementById('seek-progress').style.width = pct + '%';
+      const totalSec = 194; // 03:14
+      const curSec = Math.floor((pct / 100) * totalSec);
+      const m = Math.floor(curSec / 60).toString().padStart(2, '0');
+      const s = (curSec % 60).toString().padStart(2, '0');
+      document.getElementById('time-current').innerText = `${m}:${s}`;
+    }
+
+    function openShareModal() { document.getElementById('share-modal').classList.remove('hidden'); }
+    function closeShareModal() { document.getElementById('share-modal').classList.add('hidden'); }
+  </script>
+</body>
+</html>
