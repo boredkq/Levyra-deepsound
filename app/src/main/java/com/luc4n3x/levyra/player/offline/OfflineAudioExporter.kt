@@ -15,6 +15,7 @@ import com.luc4n3x.levyra.data.DownloadFolderAccess
 import com.luc4n3x.levyra.data.LyricsMatcher
 import com.luc4n3x.levyra.data.LyricsRepository
 import com.luc4n3x.levyra.data.PlaybackResolver
+import com.luc4n3x.levyra.data.hqaudio.FlacStreamInfo
 import com.luc4n3x.levyra.data.PlaybackSourceIdentity
 import com.luc4n3x.levyra.data.collections.PersonalCollectionNetworkPolicy
 import com.luc4n3x.levyra.data.collections.PersonalCollectionRepository
@@ -29,6 +30,9 @@ import com.luc4n3x.levyra.domain.LevyraDownloadFolderMode
 import com.luc4n3x.levyra.domain.LevyraDownloadPreset
 import com.luc4n3x.levyra.domain.LevyraDownloadSettings
 import com.luc4n3x.levyra.domain.DownloadOwnership
+import com.luc4n3x.levyra.domain.DownloadQualityChoice
+import com.luc4n3x.levyra.domain.DownloadQualitySource
+import com.luc4n3x.levyra.domain.DownloadQualityUnavailableException
 import com.luc4n3x.levyra.domain.Track
 import com.luc4n3x.levyra.player.LevyraMediaCache
 import com.luc4n3x.levyra.player.LevyraPlaybackCacheKey
@@ -505,7 +509,8 @@ class OfflineAudioExporter(
     private val taskKey: String = "",
     private val settings: LevyraDownloadSettings = LevyraDownloadSettings(),
     private val downloadQualityKey: String = settings.storedQualityKey(),
-    private val ownership: DownloadOwnership = DownloadOwnership.MANUAL
+    private val ownership: DownloadOwnership = DownloadOwnership.MANUAL,
+    private val qualityChoice: DownloadQualityChoice? = null
 ) {
     private val rateLimiter = DownloadRateLimiter(settings.effectiveRateKbps)
     private val appleMetadataEnricher = AppleMetadataEnricher(context)
@@ -516,15 +521,23 @@ class OfflineAudioExporter(
     suspend fun export(track: Track): OfflineExportResult = withContext(Dispatchers.IO) {
         reportProgress(1)
         val forceQualityResolution = settings.resolverAudioQuality != null
-        var playable = if (
-            track.streamUrl.isNotBlank() &&
-            !forceQualityResolution &&
-            isMp4AudioExportUrl(track.streamUrl)
-        ) {
+        val reuseLossless = resolver.prefersLosslessAudio() &&
+            !settings.resolverAudioQuality.equals("Low", ignoreCase = true) && track.hasFreshVerifiedLosslessSource()
+        val reuseResolved = if (qualityChoice != null) {
+            reusesChosenQuality(track, qualityChoice)
+        } else {
+            reuseLossless || (
+                track.streamUrl.isNotBlank() &&
+                    !forceQualityResolution &&
+                    !resolver.prefersLosslessAudio() &&
+                    isMp4AudioExportUrl(track.streamUrl)
+                )
+        }
+        var playable = if (reuseResolved) {
             track
         } else {
             reportProgress(4)
-            resolver.resolveForOffline(track.copy(streamUrl = ""), settings.resolverAudioQuality)
+            resolveOfflineSource(track)
         }
         if (playable.streamUrl.isBlank()) throw IOException("Stream audio non disponibile")
         reportProgress(10)
@@ -546,7 +559,7 @@ class OfflineAudioExporter(
             }
         }
         val metadataSeed = metadataTrack
-        val prepareMetadata = settings.embedMetadata && (metadataSeed.durationMs <= 0L || metadataSeed.durationMs <= FAST_METADATA_EMBED_MAX_DURATION_MS)
+        val prepareMetadata = !playable.hasVerifiedLosslessSource() && settings.embedMetadata && (metadataSeed.durationMs <= 0L || metadataSeed.durationMs <= FAST_METADATA_EMBED_MAX_DURATION_MS)
         val artworkDeferred = if (prepareMetadata && settings.embedArtwork) async(Dispatchers.IO) { downloadArtwork(metadataSeed) } else null
         val lyricsDeferred = if (prepareMetadata) async(Dispatchers.IO) { loadLyricsForMetadata(metadataSeed) } else null
         try {
@@ -562,18 +575,20 @@ class OfflineAudioExporter(
                         isVideoMode = false,
                         reason = firstError.message.orEmpty().ifBlank { "offline export source rejected" },
                         isOfflineExport = true,
-                        audioQuality = settings.resolverAudioQuality
+                        audioQuality = downloadResolverAudioQuality(qualityChoice?.source, settings)
                     )
                     releaseOfflineCacheSeed(playable)
                 }
                 reportProgress(7)
-                playable = resolver.resolveForOffline(track.copy(streamUrl = ""), settings.resolverAudioQuality)
+                playable = resolveOfflineSource(track)
                 metadataTrack = mergeOfflineMetadataTrack(metadataSeed, playable)
                 reportProgress(10)
                 downloadAudio(playable, workspace)
             }
             if (!downloaded.container.supportsEmbeddedMetadata) {
-                throw IOException("Offline export requires an M4A audio source")
+                if (downloaded.container.extension != "flac" || !playable.hasVerifiedLosslessSource()) {
+                    throw IOException("Offline export requires an M4A audio source")
+                }
             }
             var embeddedFile: PreparedAudioFile? = null
             val audioFile = if (downloaded.requiresAudioExtraction) {
@@ -591,7 +606,9 @@ class OfflineAudioExporter(
                 reportProgress(88)
                 embeddedFile = maybeEmbedMetadata(audioFile, metadataTrack, artwork, lyrics, downloaded.container, workspace)
                 reportProgress(90)
-                if (settings.verifyFile) verifyAudioFile(embeddedFile.file, embeddedFile.container)
+                if (settings.verifyFile || embeddedFile.container.extension == "flac") {
+                    verifyAudioFile(embeddedFile.file, embeddedFile.container)
+                }
                 reportProgress(92)
                 val exported = saveToMusicCollection(embeddedFile.file, metadataTrack, embeddedFile.container)
                 reportProgress(98)
@@ -767,6 +784,21 @@ class OfflineAudioExporter(
         throw IOException(PERSONAL_COLLECTION_NOT_AUDIO)
     }
 
+    private fun reusesChosenQuality(track: Track, choice: DownloadQualityChoice): Boolean =
+        track.streamUrl.isNotBlank() && choice.isSatisfiedBy(track) &&
+            (choice.source != DownloadQualitySource.Lossless || track.hasFreshVerifiedLosslessSource())
+
+    private suspend fun resolveOfflineSource(track: Track): Track {
+        val choice = qualityChoice ?: return resolver.resolveForOffline(track.copy(streamUrl = ""), settings.resolverAudioQuality)
+        val resolved = resolver.resolveForOffline(
+            track.copy(streamUrl = ""),
+            downloadResolverAudioQuality(choice.source, settings),
+            choice.source
+        )
+        if (!choice.isSatisfiedBy(resolved)) throw DownloadQualityUnavailableException()
+        return resolved
+    }
+
     private suspend fun downloadAudio(track: Track, workspace: File): DownloadedAudio {
         var lastError: IOException? = null
         val rangeAttempts = listOf(false, true, false)
@@ -788,11 +820,13 @@ class OfflineAudioExporter(
         val probe = probeAudio(sourceUrl)
         val expectedLength = probe.contentLength
         val contentType = probe.contentType
-        if (!isSupportedOfflineSource(contentType, sourceUrl)) {
+        val lossless = allowsVerifiedFlacDownload(track, contentType)
+        if ((track.hasVerifiedLosslessSource() && !lossless) ||
+            (!lossless && !isSupportedOfflineSource(contentType, sourceUrl))) {
             throw IOException("Offline export requires an M4A audio source")
         }
-        val requiresAudioExtraction = !isMp4AudioSource(contentType, sourceUrl)
-        val container = detectContainer(contentType, sourceUrl)
+        val requiresAudioExtraction = !lossless && !isMp4AudioSource(contentType, sourceUrl)
+        val container = detectContainer(contentType, sourceUrl, lossless)
         Timber.i(
             "Offline download source: provider=%s useRange=%s %s",
             track.source,
@@ -802,7 +836,9 @@ class OfflineAudioExporter(
         val partial = resumablePartialFile(workspace, container)
         val identityFile = resumeIdentitySidecar(partial)
         val currentIdentity = offlineStreamIdentity(sourceUrl, PlaybackSourceIdentity.sourceVideoId(track))
-        val storedBytes = partial.takeIf { settings.resumable && it.exists() }?.length()?.coerceAtLeast(0L) ?: 0L
+        val restartsFromZero = lossless || track.hasVerifiedHighBitrateSource()
+        if (restartsFromZero) discardPartial(partial, identityFile)
+        val storedBytes = partial.takeIf { !restartsFromZero && settings.resumable && it.exists() }?.length()?.coerceAtLeast(0L) ?: 0L
         val existingBytes = if (storedBytes > 0L) {
             val resumeBytes = resumableBytesForStreamIdentity(storedBytes, readResumeIdentity(identityFile), currentIdentity)
             if (resumeBytes == 0L) discardPartial(partial, identityFile)
@@ -816,7 +852,7 @@ class OfflineAudioExporter(
             return DownloadedAudio(partial, container, requiresAudioExtraction)
         }
         val parallelChunkSize = parallelAudioChunkSizeForSettings(expectedLength)
-        if (!useRange && existingBytes == 0L && expectedLength > 0L) {
+        if (!lossless && !useRange && existingBytes == 0L && expectedLength > 0L) {
             val cachedSeed = prepareCachedPlaybackSeed(
                 track = track,
                 workspace = workspace,
@@ -847,7 +883,7 @@ class OfflineAudioExporter(
             }
         }
         val parallelRanges = if (
-            !useRange &&
+            !lossless && !useRange &&
                 existingBytes == 0L &&
                 shouldUseParallelOfflineRanges(track.source, sourceUrl)
         ) {
@@ -897,7 +933,8 @@ class OfflineAudioExporter(
         return executeCancellable(request) { response ->
             if (!response.isSuccessful) throw IOException("Download audio fallito: HTTP ${response.code}")
             val responseType = response.header("Content-Type").orEmpty()
-            if (!isSupportedOfflineSource(responseType, response.request.url.toString())) {
+            if ((lossless && !allowsVerifiedFlacDownload(track, responseType)) ||
+                (!lossless && !isSupportedOfflineSource(responseType, response.request.url.toString()))) {
                 throw IOException("Offline export received a non-audio MP4 source")
             }
             val body = response.body
@@ -1420,6 +1457,9 @@ class OfflineAudioExporter(
         if (!settings.embedMetadata) {
             return PreparedAudioFile(input, fileName, container, fileMetadataEmbedded = false)
         }
+        if (container.extension == "flac") {
+            return PreparedAudioFile(input, fileName, container, fileMetadataEmbedded = false)
+        }
         if (!container.supportsEmbeddedMetadata) {
             throw IOException("Offline metadata embedding requires an M4A audio source")
         }
@@ -1830,14 +1870,14 @@ class OfflineAudioExporter(
 
     private fun verifyAudioFile(file: File, container: AudioContainer) {
         if (!file.isFile || file.length() < MIN_VALID_AUDIO_BYTES) throw IOException("File audio non valido")
-        val header = ByteArray(16)
+        val header = ByteArray(if (container.extension == "flac") 42 else 16)
         val read = file.inputStream().use { it.read(header) }
         if (read < 4) throw IOException("Intestazione audio incompleta")
         val valid = when (container.extension) {
             "m4a" -> header.copyOf(read).toString(Charsets.ISO_8859_1).contains("ftyp")
             "webm" -> header[0] == 0x1A.toByte() && header[1] == 0x45.toByte() && header[2] == 0xDF.toByte() && header[3] == 0xA3.toByte()
             "mp3" -> header.copyOf(read).toString(Charsets.ISO_8859_1).startsWith("ID3") || (header[0].toInt() and 0xFF) == 0xFF
-            "flac" -> header.copyOf(read).toString(Charsets.ISO_8859_1).startsWith("fLaC")
+            "flac" -> FlacStreamInfo.parse(header.copyOf(read)) != null
             "ogg", "opus" -> header.copyOf(read).toString(Charsets.ISO_8859_1).startsWith("OggS")
             "wav" -> header.copyOf(read).toString(Charsets.ISO_8859_1).startsWith("RIFF")
             else -> true
@@ -1868,7 +1908,8 @@ class OfflineAudioExporter(
         }
     }
 
-    private fun detectContainer(contentType: String, url: String): AudioContainer {
+    private fun detectContainer(contentType: String, url: String, verifiedFlac: Boolean = false): AudioContainer {
+        if (verifiedFlac) return AudioContainer("flac", "audio/flac", false)
         if (!isSupportedOfflineSource(contentType, url)) {
             throw IOException("Offline export requires an M4A audio source")
         }

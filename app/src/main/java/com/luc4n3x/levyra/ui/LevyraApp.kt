@@ -3,6 +3,7 @@ package com.luc4n3x.levyra.ui
 
 
 import com.luc4n3x.levyra.ui.theme.*
+import com.luc4n3x.levyra.domain.exploreSamplesRequestIndex
 import com.luc4n3x.levyra.ui.theme.nocturneMiniSettings
 import com.luc4n3x.levyra.ui.theme.nocturneNavSettings
 
@@ -50,6 +51,14 @@ import androidx.compose.runtime.key
 import com.luc4n3x.levyra.ui.components.LevyraPlayPauseGlyph
 import com.luc4n3x.levyra.ui.artwork.ArtworkBackdropWash
 import com.luc4n3x.levyra.ui.components.LevyraAdaptiveDockSurface
+import com.luc4n3x.levyra.ui.components.LocalDockMorph
+import com.luc4n3x.levyra.ui.components.dockMorphHeight
+import com.luc4n3x.levyra.ui.components.dockMorphPadding
+import com.luc4n3x.levyra.ui.components.dockMorphTray
+import com.luc4n3x.levyra.domain.dockMorphActive
+import com.luc4n3x.levyra.domain.DockScrollEffect
+import com.luc4n3x.levyra.domain.effectiveDockScrollEffect
+import com.luc4n3x.levyra.domain.supportsDockMorph
 import com.luc4n3x.levyra.ui.components.animatedCompaction
 import com.luc4n3x.levyra.ui.components.dockClipHeight
 import com.luc4n3x.levyra.ui.components.dockFade
@@ -80,8 +89,10 @@ import com.luc4n3x.levyra.feature.settings.SettingsSearchIndex
 import com.luc4n3x.levyra.feature.settings.SettingsSearchResult
 import com.luc4n3x.levyra.feature.cast.CastRouteButton
 import com.luc4n3x.levyra.ui.components.PremiumSeekbar
-import com.luc4n3x.levyra.ui.selection.TrackSelectionActions
+import com.luc4n3x.levyra.ui.selection.trackSelectionActions
 import com.luc4n3x.levyra.ui.selection.TrackSelectionBar
+import com.luc4n3x.levyra.ui.selection.listBottomPadding
+import com.luc4n3x.levyra.ui.selection.LocalTrackSelectionChromeHeight
 import com.luc4n3x.levyra.ui.selection.TrackSelectionState
 import com.luc4n3x.levyra.ui.selection.resolveSelected
 import com.luc4n3x.levyra.ui.selection.rememberTrackSelectionState
@@ -602,6 +613,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
 import coil3.Image as CoilImage
 import coil3.compose.AsyncImage
+import com.luc4n3x.levyra.ui.download.DownloadQualityPickerHost
 import coil3.toBitmap
 import coil3.request.CachePolicy
 import coil3.request.ImageRequest
@@ -2245,27 +2257,30 @@ fun LevyraApp(
             navigationStudio.settings.activeTuning().colorSource == NavColorSource.Artwork
     )
     val livePlaybackPosition = remember(viewModel) { viewModel::livePlaybackPositionMs }
+    val selectionChromeHeight = remember { mutableIntStateOf(0) }
     CompositionLocalProvider(
         LocalMusicExperiences provides MusicExperienceNavigation(
             rewind = { musicExperience = "rewind" }, health = { musicExperience = "health" }
         ),
         LocalAnimationsEnabled provides state.animationsEnabled,
         LocalLivePlaybackPosition provides livePlaybackPosition,
+        LocalTrackSelectionChromeHeight provides selectionChromeHeight,
         LocalLevyraVisualCapabilities provides visualCapabilities,
         LocalLevyraStrings provides currentStrings,
         LocalLevyraHaptics provides rememberLevyraHaptics(state.interfaceSettings.hapticFeedback),
         LocalLayoutDirection provides layoutDirection,
         LocalNocturneNavigationHeight provides remember { mutableStateOf(64.dp) },
-        LocalNavDockExtraClearance provides if (LevyraSkinManagesLayout) 0.dp else navDockExtraClearance(navigationStudio.settings.style, navigationStudio.settings.activeTuning()),
+        LocalNavDockExtraClearance provides if (LevyraSkinManagesLayout) 0.dp else rememberNavDockExtraClearance(navigationStudio.settings.style, navigationStudio.settings.activeTuning()),
         LocalNavArtworkSeed provides navArtworkSeed
     ) {
         Box(modifier = Modifier.fillMaxSize()) {
+            DownloadQualityPickerHost(viewModel)
             BoxWithConstraints(
                 modifier = Modifier
                     .fillMaxSize()
                     .background(LevyraBlack)
             ) {
-            val dockState = rememberLevyraDockState()
+            val dockState = rememberLevyraDockState(enabled = state.interfaceSettings.effectiveDockScrollEffect() != DockScrollEffect.Off)
             val glassBlurAllowed = rememberGlassBlurAllowed()
             val dockGlass = rememberGlassBackdropState(
                 enabled = !LevyraSkinManagesLayout && state.interfaceSettings.liquidGlassEnabled &&
@@ -2540,7 +2555,13 @@ fun LevyraApp(
                         LevyraTab.Search -> {
                             val searchViewModel: SearchViewModel = composeViewModel(key = "levyra-search", factory = screenViewModelFactory)
                             val screenState by searchViewModel.state.collectAsStateWithLifecycle()
-                            SearchScreen(searchViewModel, screenState) { track -> trackActionTarget = track }
+                            val appleExploreViewModel: ExploreViewModel? = if (LevyraIsAppleMusic) {
+                                composeViewModel(key = "levyra-explore", factory = screenViewModelFactory)
+                            } else null
+                            SearchScreen(
+                                searchViewModel, screenState, appleExploreViewModel,
+                                backEnabled = !rootOverlayOpen && state.selectedTab == LevyraTab.Search
+                            ) { track -> trackActionTarget = track }
                         }
                         LevyraTab.Explore -> {
                             val exploreViewModel: ExploreViewModel = composeViewModel(key = "levyra-explore", factory = screenViewModelFactory)
@@ -2577,22 +2598,33 @@ fun LevyraApp(
                     modifier = Modifier
                         .align(Alignment.BottomCenter)
                         .zIndex(if (settingsDockVisible) 1f else 0f)
+                        .onSizeChanged { selectionChromeHeight.value = it.height }
                         .fillMaxWidth()
                         .windowInsetsPadding(LevyraHorizontalSafeInsets)
                         .graphicsLayer { alpha = playerChromeAlpha(expansionProvider()) },
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.spacedBy(0.dp)
                 ) {
-                    if (!state.showSettings && !LevyraIsSpotify) BottomTabsScrim()
+                    if (
+                        !state.showSettings && !LevyraIsSpotify &&
+                        !skinNavigationSettings(navigationStudio.settings).style.floating
+                    ) {
+                        BottomTabsScrim()
+                    }
                     val dockCompaction = dockState.animatedCompaction(state.animationsEnabled)
                     val compactionProvider: () -> Float = { dockCompaction.value }
                     val miniPlayerVisible = state.currentTrack != null && !state.isSamplesOpen
-                    val dockLink = rememberConnectedDockLink(
+                    val dockMorph = rememberDockMorph(
+                        active = state.interfaceSettings.dockMorphActive() && !dockSideBySide && !state.showSettings,
+                        miniVisible = miniPlayerVisible,
+                        compaction = dockCompaction
+                    )
+                    val dockLink = rememberMorphedDockLink(rememberConnectedDockLink(
                         navigation = navigationStudio.settings,
                         attached = miniPlayerVisible && !dockSideBySide && !state.showSettings,
                         compaction = dockCompaction,
                         animated = state.animationsEnabled
-                    )
+                    ), dockMorph)
                     val miniPlayerSlot: @Composable () -> Unit = {
                         AnimatedVisibility(
                             visible = miniPlayerVisible,
@@ -2627,14 +2659,16 @@ fun LevyraApp(
                                         animated = state.animationsEnabled,
                                         gesturesEnabled = state.interfaceSettings.playerGesturesEnabled,
                                         swipeTrackChangeEnabled = state.interfaceSettings.swipeTrackChangeEnabled,
-                                        stepDirection = miniStepDirection
+                                        stepDirection = miniStepDirection,
+                                        isFavorite = track.id in state.favoriteIds
                                     )
                                     val miniPlaybackActions = MiniPlayerPlaybackActions(
                                         open = { viewModel.selectTab(LevyraTab.Player) },
                                         toggle = viewModel::togglePlay,
                                         next = viewModel::next,
                                         previous = viewModel::previous,
-                                        close = viewModel::closePlayer
+                                        close = viewModel::closePlayer,
+                                        favorite = { viewModel.toggleFavorite(track) }
                                     )
                                     val miniExpansionActions = MiniPlayerExpansionActions(
                                         start = onExpansionDragStart,
@@ -2673,6 +2707,7 @@ fun LevyraApp(
                     val bottomTabsSlot: @Composable () -> Unit = {
                         val selectDockTab: (LevyraTab) -> Unit = { tab ->
                             if (state.showSettings) viewModel.closeSettings()
+                            if (dockMorph != null) dockState.expand()
                             viewModel.selectTab(tab)
                         }
                         Box(
@@ -2706,9 +2741,6 @@ fun LevyraApp(
                         miniPlayerSlot()
                         Spacer(modifier = Modifier.navigationBarsPadding())
                     } else {
-                        if (!dockSideBySide) {
-                            miniPlayerSlot()
-                        }
                         val dockModifier = if (miniMaxWidth.isFinite()) {
                             Modifier.widthIn(max = miniMaxWidth.dp)
                         } else {
@@ -2727,17 +2759,23 @@ fun LevyraApp(
                                 bottomTabsSlot()
                             }
                         }
-                        if (skinNavigationSettings(navigationStudio.settings).style == NavStyle.Original) {
-                            LevyraAdaptiveDockSurface(glass = dockGlass, modifier = dockModifier, content = dockContent)
-                        } else {
-                            StyledDockSurface(
-                                style = skinNavigationSettings(navigationStudio.settings).style,
-                                tuning = skinNavigationSettings(navigationStudio.settings).activeTuning(),
-                                glass = dockGlass,
-                                modifier = dockModifier,
-                                content = dockContent
-                            )
+                        val dockSurfaceSlot: @Composable () -> Unit = {
+                            if (skinNavigationSettings(navigationStudio.settings).style == NavStyle.Original) {
+                                LevyraAdaptiveDockSurface(glass = dockGlass, modifier = dockModifier, content = dockContent)
+                            } else {
+                                StyledDockSurface(
+                                    style = skinNavigationSettings(navigationStudio.settings).style,
+                                    tuning = skinNavigationSettings(navigationStudio.settings).activeTuning(),
+                                    glass = dockGlass,
+                                    modifier = dockModifier,
+                                    content = dockContent
+                                )
+                            }
                         }
+                        LevyraDockStack(
+                            dockMorph, dockSideBySide, miniPlayerSlot, dockSurfaceSlot,
+                            DockSearchRoute(state.interfaceSettings.skin, navigationStudio.settings, backgroundTab, dockState, viewModel::selectTab)
+                        )
                     }
                 }
             }
@@ -3326,7 +3364,15 @@ fun LevyraApp(
                         onDownloadTrack = viewModel::exportTrack,
                         onQueueTrack = viewModel::addToQueue,
                         onTogglePlayback = viewModel::togglePlay,
-                        onOpenPlayer = viewModel::openPlayerScreen
+                        onOpenPlayer = viewModel::openPlayerScreen,
+                        onLikeAll = { viewModel.likeAllTracks(preview.tracks) },
+                        playlists = state.playlists,
+                        onLikeTracks = viewModel::likeAllTracks,
+                        onPlayTracksNext = viewModel::playTracksNext,
+                        onAddTracksToQueue = viewModel::addTracksToQueue,
+                        onAddTracksToPlaylist = viewModel::addTracksToPlaylist,
+                        onCreatePlaylistWithTracks = viewModel::createPlaylistWithTracks,
+                        onDownloadTracks = { tracks -> viewModel.exportTracks(tracks, currentStrings.offline) }
                     )
                 }
             }
@@ -3495,7 +3541,9 @@ fun LevyraApp(
                     progress = progressOf(state.positionMs, state.durationMs),
                     animated = state.animationsEnabled,
                     onUpdate = viewModel::setMiniPlayerStudioSettings,
-                    onClose = viewModel::closeMiniPlayerStudio
+                    onClose = viewModel::closeMiniPlayerStudio,
+                    scrollEffect = state.interfaceSettings.dockScrollEffect,
+                    onScrollEffect = { viewModel.setInterfaceSettings(state.interfaceSettings.copy(dockScrollEffect = it)) }
                 )
             }
 
@@ -4423,7 +4471,7 @@ private fun AlbumOverlay(
                 LazyColumn(
                     state = listState,
                     modifier = Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(bottom = albumBottomInset)
+                    contentPadding = PaddingValues(bottom = selection.listBottomPadding(albumBottomInset))
                 ) {
                     item(key = "album-hero", contentType = "album-hero") {
                         ImmersiveMediaHero(
@@ -4606,7 +4654,7 @@ private fun AlbumOverlay(
         if (state.albumLoading && album != null && tracks.isNotEmpty()) {
             LinearMiniLoading(modifier = Modifier.align(Alignment.TopCenter).padding(top = topBarHeight))
         }
-        state.currentTrack?.let { current ->
+        state.currentTrack?.takeUnless { selection.isActive }?.let { current ->
             AlbumNowPlayingDock(
                 track = current,
                 isPlaying = state.isPlaying,
@@ -4625,43 +4673,18 @@ private fun AlbumOverlay(
         TrackSelectionBar(
             state = selection,
             allVisibleIds = selectableIds,
-            actions = TrackSelectionActions(
-                onPlayNext = selectedTracks.takeIf { it.isNotEmpty() }?.let {
-                    {
-                        onPlayTracksNext(selectedTracks)
-                        selection.exit()
-                    }
-                },
-                onAddToQueue = selectedTracks.takeIf { it.isNotEmpty() }?.let {
-                    {
-                        onAddTracksToQueue(selectedTracks)
-                        selection.exit()
-                    }
-                },
-                onAddToPlaylist = selectedTracks
-                    .filter { it.id.isNotBlank() }
-                    .takeIf { it.isNotEmpty() }
-                    ?.let { playlistTracks -> { batchAddTargets = playlistTracks } },
-                onFavorite = selectedTracks.takeIf { it.isNotEmpty() }?.let {
-                    {
-                        onToggleFavorites(selectedTracks)
-                        selection.exit()
-                    }
-                },
-                onDownload = selectedTracks.takeIf { it.isNotEmpty() }?.let {
-                    {
-                        onExportTracks(selectedTracks)
-                        selection.exit()
-                    }
-                }
+            actions = trackSelectionActions(
+                state = selection,
+                selectedTracks = selectedTracks,
+                onPlayNext = onPlayTracksNext,
+                onAddToQueue = onAddTracksToQueue,
+                onAddToPlaylist = { batchAddTargets = it },
+                onFavorite = onToggleFavorites,
+                onDownload = onExportTracks
             ),
             modifier = Modifier
                 .align(Alignment.BottomCenter)
-                .padding(
-                    start = 12.dp,
-                    end = 12.dp,
-                    bottom = if (state.currentTrack != null) 92.dp else 12.dp
-                )
+                .padding(horizontal = 12.dp)
         )
 
         addTarget?.let { track ->
@@ -5205,7 +5228,7 @@ private fun ArtistOverlay(
         LazyColumn(
             state = artistListState,
             modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(bottom = if (appleClosingOwnsBottom) 0.dp else artistBottomPadding),
+            contentPadding = PaddingValues(bottom = selection.listBottomPadding(if (appleClosingOwnsBottom) 0.dp else artistBottomPadding)),
             verticalArrangement = Arrangement.spacedBy(18.dp)
         ) {
             when {
@@ -5396,7 +5419,7 @@ private fun ArtistOverlay(
             }
         }
 
-        state.currentTrack?.let { current ->
+        state.currentTrack?.takeUnless { selection.isActive }?.let { current ->
             AlbumNowPlayingDock(
                 track = current,
                 isPlaying = state.isPlaying,
@@ -5415,43 +5438,18 @@ private fun ArtistOverlay(
         TrackSelectionBar(
             state = selection,
             allVisibleIds = selectableIds,
-            actions = TrackSelectionActions(
-                onPlayNext = selectedTracks.takeIf { it.isNotEmpty() }?.let {
-                    {
-                        onPlayTracksNext(selectedTracks)
-                        selection.exit()
-                    }
-                },
-                onAddToQueue = selectedTracks.takeIf { it.isNotEmpty() }?.let {
-                    {
-                        onAddTracksToQueue(selectedTracks)
-                        selection.exit()
-                    }
-                },
-                onAddToPlaylist = selectedTracks
-                    .filter { it.id.isNotBlank() }
-                    .takeIf { it.isNotEmpty() }
-                    ?.let { playlistTracks -> { batchAddTargets = playlistTracks } },
-                onFavorite = selectedTracks.takeIf { it.isNotEmpty() }?.let {
-                    {
-                        onToggleFavorites(selectedTracks)
-                        selection.exit()
-                    }
-                },
-                onDownload = selectedTracks.takeIf { it.isNotEmpty() }?.let {
-                    {
-                        onExportTracks(selectedTracks)
-                        selection.exit()
-                    }
-                }
+            actions = trackSelectionActions(
+                state = selection,
+                selectedTracks = selectedTracks,
+                onPlayNext = onPlayTracksNext,
+                onAddToQueue = onAddTracksToQueue,
+                onAddToPlaylist = { batchAddTargets = it },
+                onFavorite = onToggleFavorites,
+                onDownload = onExportTracks
             ),
             modifier = Modifier
                 .align(Alignment.BottomCenter)
-                .padding(
-                    start = 12.dp,
-                    end = 12.dp,
-                    bottom = if (state.currentTrack != null) 88.dp else 12.dp
-                )
+                .padding(horizontal = 12.dp)
         )
 
         if (batchAddTargets.isNotEmpty()) {
@@ -7995,6 +7993,12 @@ private fun LyricsOverlay(
                 onTranslation = onTranslation,
                 onOptions = { showLyricsOptions = true },
                 onClose = onClose
+            )
+        } else if (LevyraIsSpotify && studioSettings.spotifyLyricsApplies() && track != null) {
+            SpotifyLyricsOverlayScreen(
+                state, track, visibleLyrics, lyricsPositionProvider, selectionMode, selectedRange, lyricsAnimationsEnabled,
+                ::onLyricLineClick, onSeekFraction, onTogglePlay, if (canShareLyrics) ::toggleShareMode else null,
+                { showLyricsOptions = true }, onClose
             )
         } else {
         if (studioSettings.spotifyLyricsApplies()) {
@@ -10571,6 +10575,7 @@ private class StudioHomeContext(
                 isPlaying = state.isPlaying,
                 isResolving = state.isResolving,
                 animationsEnabled = homeAnimationsEnabled,
+                playButtonAnimationsEnabled = false,
                 onOpen = {
                     stableSpotlightId = heroTrack.id
                     if (isYandex) {
@@ -10773,38 +10778,19 @@ private fun StudioHomeContent(
 ) {
     val homeRadio = LocalHomeRadio.current
     val homeDiscovery = LocalHomeDiscovery.current
+    val experiences = LocalMusicExperiences.current
+    val spotifyScope = rememberCoroutineScope()
+    var spotifyFilterName by rememberSaveable { mutableStateOf(SpotifyHomeFilter.All.name) }
     with(c) {
         val statusBarTop = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
-        val homeTopPadding = 8.dp
+        val homeTopPadding = if (LevyraIsSpotify) SpotifyDesign.filterRowHeight else 8.dp
+        val spotifyFilters = remember(homeRenderOrder, studioLayout) {
+            SpotifyHomeFilter.available(homeRenderOrder.filterNot(studioLayout::isHidden))
+        }
+        val spotifyFilter = SpotifyHomeFilter.selected(spotifyFilterName, spotifyFilters)
+        val shownOrder = if (LevyraIsSpotify) homeRenderOrder.filter(spotifyFilter::accepts) else homeRenderOrder
         val homeLocalAnimations = LocalAnimationsEnabled.current && studioLayout.motion != HomeMotion.Reduced
-        // One continuous pixel offset survives LazyColumn item changes.
-        // Keep its value out of composition: the portrait reads it in graphicsLayer.
-        val portraitScroll = rememberSaveable {
-            mutableFloatStateOf(
-                if (homeListState.firstVisibleItemIndex == 0) {
-                    homeListState.firstVisibleItemScrollOffset.toFloat()
-                } else {
-                    10_000f
-                }
-            )
-        }
-        val portraitScrollConnection = remember(homeListState, homeStyle) {
-            object : NestedScrollConnection {
-                override fun onPostScroll(consumed: Offset, available: Offset, source: NestedScrollSource): Offset {
-                    if (homeStyle == HomeStyle.ExpressiveMax && consumed.y != 0f) {
-                        portraitScroll.floatValue = (portraitScroll.floatValue - consumed.y).coerceAtLeast(0f)
-                    }
-                    return Offset.Zero
-                }
-            }
-        }
-        LaunchedEffect(homeListState) {
-            snapshotFlow {
-                homeListState.firstVisibleItemIndex == 0 && homeListState.firstVisibleItemScrollOffset == 0
-            }.distinctUntilChanged().collect { atTop ->
-                if (atTop) portraitScroll.floatValue = 0f
-            }
-        }
+        val portrait = rememberStudioHomePortraitScroll(homeListState, homeStyle)
         CompositionLocalProvider(
             LocalHomeCompactDensity provides compactHome,
             LocalAnimationsEnabled provides homeLocalAnimations
@@ -10820,13 +10806,13 @@ private fun StudioHomeContent(
                     showExpressivePortrait = homeStyle == HomeStyle.ExpressiveMax &&
                         spotlightHeroData != null &&
                         !studioLayout.isHidden(HomeSectionId.Spotlight),
-                    expressiveScrollPx = { portraitScroll.floatValue }
+                    expressiveScrollPx = { portrait.position.floatValue }
                 )
                 LazyColumn(
                     state = homeListState,
                     modifier = Modifier
                         .fillMaxSize()
-                        .nestedScroll(portraitScrollConnection)
+                        .nestedScroll(portrait.connection)
                         .pullToRefresh(isRefreshing = homeRefreshing, state = homePullState, onRefresh = onPullRefresh),
                     contentPadding = PaddingValues(
                         top = statusBarTop + homeTopPadding,
@@ -10834,11 +10820,20 @@ private fun StudioHomeContent(
                     ),
                     verticalArrangement = Arrangement.spacedBy(homeSectionGap)
                 ) {
-                    studioHomeHeaderItems(c, flowShortcutTracks, statusBarTop, homeTopPadding)
-                    if (c.stagedSpotlight != null && !c.studioLayout.isHidden(HomeSectionId.Discovery)) {
-                        discoverySection(homeDiscovery, c.homeStyle, c.styleSpec, c.homeAnimationsEnabled)
-                    }
-                    studioHomeSections(c, homeRenderOrder, youtubeMusicHome, homeRadio, homeDiscovery)
+                    studioHomeFilteredSections(c, flowShortcutTracks, statusBarTop, homeTopPadding, spotifyFilter, shownOrder, youtubeMusicHome, homeRadio, homeDiscovery, LevyraIsSpotify)
+                }
+                if (LevyraIsSpotify) {
+                    SpotifyHomeFilterBar(
+                        name = state.userName,
+                        selected = spotifyFilter,
+                        filters = spotifyFilters,
+                        onSelect = { filter ->
+                            spotifyFilterName = filter.name
+                            spotifyScope.launch { homeListState.scrollToItem(0) }
+                        },
+                        onSettings = viewModel::openSettings,
+                        modifier = Modifier.align(Alignment.TopCenter)
+                    )
                 }
                 PullToRefreshDefaults.LoadingIndicator(
                     state = homePullState,
@@ -10863,7 +10858,8 @@ private fun LazyListScope.studioHomeHeaderItems(
     c: StudioHomeContext,
     flowShortcutTracks: List<Track>,
     statusBarTop: Dp,
-    homeTopPadding: Dp
+    homeTopPadding: Dp,
+    heroVisible: Boolean = true
 ) {
     with(c) {
         if (homeStyle == HomeStyle.Original) {
@@ -10895,7 +10891,7 @@ private fun LazyListScope.studioHomeHeaderItems(
                         isResolving = state.isResolving,
                         onSearch = viewModel::openSearch,
                         onSettings = viewModel::openSettings,
-                        hero = mergedStudioHero(),
+                        hero = if (!LevyraIsSpotify || heroVisible) mergedStudioHero() else null,
                         topBleed = statusBarTop + homeTopPadding,
                         onOpenZone = viewModel::openExploreZone
                     )
@@ -10974,6 +10970,8 @@ private fun LazyListScope.studioHomeSections(
 @Composable
 private fun StudioHomeOverlays(c: StudioHomeContext, homeBottomInset: Dp) {
     with(c) {
+        if (LevyraIsSpotify) SpotifyTopChartOverlay(state.currentTrack?.id, state.isPlaying, homeBottomInset, viewModel::playFrom, onTrackActions)
+        if (LevyraIsSpotify) SpotifyRadioOverlay(viewModel, state.currentTrack?.id, state.isPlaying, homeBottomInset, onTrackActions)
         if (chartMarketSheetOpen) {
             ChartMarketSheet(
                 regions = state.chartRegions,
@@ -12015,8 +12013,9 @@ private fun PersonalListeningShelf(
     onTrackActions: (Track) -> Unit
 ) {
     if (LevyraSkinManagesLayout) {
-        Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
-            Box(Modifier.padding(horizontal = 20.dp)) {
+        Column(verticalArrangement = Arrangement.spacedBy(if (LevyraIsSpotify) 8.dp else 14.dp)) {
+            if (LevyraIsSpotify) SpotifyOrbitHeader(onPlayAll)
+            else Box(Modifier.padding(horizontal = 20.dp)) {
                 StudioHomeOrbitHeader(userName = userName, profilePhotoPath = profilePhotoPath,
                     profilePhotoVersion = profilePhotoVersion, accountAvatarUrl = accountAvatarUrl, onPlayAll = onPlayAll)
             }
@@ -14139,6 +14138,10 @@ private fun StudioHomeOrbitHeader(
     accountAvatarUrl: String,
     onPlayAll: (() -> Unit)?
 ) {
+    if (LevyraIsSpotify) {
+        SpotifyOrbitHeader(onPlayAll)
+        return
+    }
     val strings = LocalLevyraStrings.current
     val displayName = userName.trim()
     val initial = remember(displayName) { homePersonalOrbitInitial(displayName) }
@@ -14337,8 +14340,9 @@ private fun StudioPersonalListeningShelf(
     onTrackActions: (Track) -> Unit
 ) {
     if (LevyraSkinManagesLayout) {
-        Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
-            Box(Modifier.padding(horizontal = 20.dp)) {
+        Column(verticalArrangement = Arrangement.spacedBy(if (LevyraIsSpotify) 8.dp else 14.dp)) {
+            if (LevyraIsSpotify) SpotifyOrbitHeader(onPlayAll)
+            else Box(Modifier.padding(horizontal = 20.dp)) {
                 StudioHomeOrbitHeader(userName = userName, profilePhotoPath = profilePhotoPath,
                     profilePhotoVersion = profilePhotoVersion, accountAvatarUrl = accountAvatarUrl, onPlayAll = onPlayAll)
             }
@@ -14630,7 +14634,7 @@ private fun BoxScope.StudioPersonalOrbitOverlayTitle(track: Track, isCurrent: Bo
     )
 }
 
-private fun trackAlbumHit(track: Track): AlbumHit = AlbumHit(
+internal fun trackAlbumHit(track: Track): AlbumHit = AlbumHit(
     title = track.album.trim(),
     artist = track.artist.trim(),
     year = track.year.ifBlank { track.releaseDate.take(4).takeIf { it.toIntOrNull() != null }.orEmpty() },
@@ -15382,7 +15386,13 @@ private fun TrackOverflowMenu(
 }
 
 @Composable
-private fun SearchScreen(viewModel: SearchViewModel, state: LevyraUiState, onTrackActions: (Track) -> Unit = {}) {
+private fun SearchScreen(
+    viewModel: SearchViewModel,
+    state: LevyraUiState,
+    appleExploreViewModel: ExploreViewModel? = null,
+    backEnabled: Boolean = false,
+    onTrackActions: (Track) -> Unit = {}
+) {
     val strings = LocalLevyraStrings.current
     val focusManager = LocalFocusManager.current
     val keyboardController = LocalSoftwareKeyboardController.current
@@ -15455,13 +15465,18 @@ private fun SearchScreen(viewModel: SearchViewModel, state: LevyraUiState, onTra
     LaunchedEffect(state.languageCode) {
         viewModel.refreshArtistSuggestions()
     }
+    val spotifySearchFocus = remember { mutableStateOf(false) }
+    val appleCatalog = appleExploreViewModel?.let { rememberAppleMusicSearchCatalog(state, viewModel::ensureExplore) }
+    var appleDestination by rememberSaveable { mutableStateOf<String?>(null) }
+    val appleLanding = appleCatalog != null && queryClean.isEmpty() && !spotifySearchFocus.value
+    val appleColumns = appleMusicSearchColumns()
 
     Column(
         modifier = Modifier
             .fillMaxSize()
             .statusBarsPadding()
-            .padding(horizontal = 18.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp)
+            .padding(horizontal = if (LevyraIsSpotify) SpotifyDesign.gutter else if (appleCatalog != null) AppleMusicDesign.gutter else 18.dp),
+        verticalArrangement = Arrangement.spacedBy(if (appleCatalog != null) 0.dp else 8.dp)
     ) {
         SearchHeader(
             query = state.query,
@@ -15482,7 +15497,10 @@ private fun SearchScreen(viewModel: SearchViewModel, state: LevyraUiState, onTra
             onClear = {
                 viewModel.setQuery("")
             },
-            onBack = { viewModel.navigateBack() }
+            onBack = { viewModel.navigateBack() },
+            userName = state.userName,
+            onSettings = viewModel::openSettings,
+            spotifyFocus = spotifySearchFocus
         )
 
         val data = state.searchData
@@ -15553,6 +15571,42 @@ private fun SearchScreen(viewModel: SearchViewModel, state: LevyraUiState, onTra
         LaunchedEffect(selectableIds) { selection.retainAvailable(selectableIds) }
         BackHandler(enabled = selection.isActive) { selection.exit() }
 
+        val searchActions = YouTubeMusicSearchActions(
+            selection = selection,
+            playSong = { context, track ->
+                if (selection.isActive) {
+                    selection.toggle(trackSelectionKey(track))
+                } else {
+                    focusManager.clearFocus()
+                    keyboardController?.hide()
+                    viewModel.playFrom(deduplicateSearchSongs(listOf(track) + context), track)
+                }
+            },
+            openArtist = { hit ->
+                focusManager.clearFocus()
+                keyboardController?.hide()
+                viewModel.openArtistFromHit(hit)
+            },
+            openTopResult = openTopResult,
+            shuffle = shuffleTopResult,
+            mix = mixTopResult,
+            openPlaylist = { playlist ->
+                focusManager.clearFocus()
+                keyboardController?.hide()
+                viewModel.openPlaylistHit(playlist)
+            },
+            openAlbum = { album ->
+                focusManager.clearFocus()
+                keyboardController?.hide()
+                viewModel.openAlbum(album)
+            },
+            trackActions = onTrackActions
+        )
+        val appleFilters = remember(data) { appleSearchFilters(data) }
+        val appleFilter = filter.takeIf { it in appleFilters } ?: SearchFilter.All
+        val appleResults = remember(appleFilter, visibleSongs, topResultTracks, topResultArtist, data, appleCatalog != null) {
+            if (appleCatalog == null) emptyList() else appleSearchResults(appleFilter, deduplicateSearchSongs(topResultTracks + visibleSongs), topResultArtist, data)
+        }
         Box(
             modifier = Modifier
                 .weight(1f)
@@ -15560,10 +15614,20 @@ private fun SearchScreen(viewModel: SearchViewModel, state: LevyraUiState, onTra
         ) {
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(bottom = levyraTabContentBottomPadding(state.currentTrack != null)),
-            verticalArrangement = Arrangement.spacedBy(3.dp)
+            contentPadding = PaddingValues(
+                bottom = selection.listBottomPadding(levyraTabContentBottomPadding(state.currentTrack != null))
+            ),
+            verticalArrangement = Arrangement.spacedBy(if (appleLanding) AppleSearchGridGap else if (appleCatalog != null && !data.isEmpty) 0.dp else 3.dp)
         ) {
-            if (queryClean.isEmpty()) {
+            if (queryClean.isEmpty() && LevyraIsSpotify && !spotifySearchFocus.value) {
+                spotifySearchBrowseItem(state, viewModel)
+            } else if (appleLanding && appleCatalog != null) {
+                appleMusicSearchLanding(
+                    appleCatalog, appleColumns,
+                    onOpen = { tile -> appleDestination = tile.destination },
+                    onRequestArtwork = { params -> appleExploreViewModel?.ensureExploreCategoryArtwork(params, false) }
+                )
+            } else if (queryClean.isEmpty()) {
                 item(key = "search-taste-hints", contentType = "search-taste-hints") {
                     SearchTasteHints(
                         suggestions = tasteHintQueries,
@@ -15627,7 +15691,7 @@ private fun SearchScreen(viewModel: SearchViewModel, state: LevyraUiState, onTra
                     )
                 }
             } else {
-                if (querySuggestions.isNotEmpty() && !(LevyraIsYouTubeMusic && !data.isEmpty)) {
+                if (querySuggestions.isNotEmpty() && !((LevyraIsYouTubeMusic || appleCatalog != null) && !data.isEmpty)) {
                     item(key = "search-query-suggestions", contentType = "search-query-suggestions") {
                         SearchQueryChips(
                             query = state.query,
@@ -15642,6 +15706,28 @@ private fun SearchScreen(viewModel: SearchViewModel, state: LevyraUiState, onTra
                     }
                 }
                 when {
+                    !data.isEmpty && appleCatalog != null -> {
+                        appleMusicSearchResults(
+                            filters = appleFilters,
+                            selected = appleFilter,
+                            results = appleResults,
+                            currentTrackId = state.currentTrack?.id,
+                            onSelect = viewModel::setSearchFilter,
+                            actions = searchActions
+                        )
+                        if (appleFilter != SearchFilter.All) {
+                            item(key = "search-section-footer", contentType = "search-section-footer") {
+                                SearchSectionGap()
+                                SearchSectionFooter(
+                                    loading = appleFilter in state.searchSectionLoading,
+                                    failed = appleFilter in data.failedSections,
+                                    canLoadMore = state.searchSectionContinuations[appleFilter].orEmpty().isNotBlank(),
+                                    autoLoadKey = data.sectionSize(appleFilter),
+                                    onLoadMore = { viewModel.loadMoreSearchSection(appleFilter) }
+                                )
+                            }
+                        }
+                    }
                     !data.isEmpty && LevyraIsYouTubeMusic -> {
                         item(key = "search-filters", contentType = "search-filters") {
                             SearchSectionGap()
@@ -15665,32 +15751,7 @@ private fun SearchScreen(viewModel: SearchViewModel, state: LevyraUiState, onTra
                             playsLabel = { track ->
                                 formatSearchViewCount(track.youtubeViewCount, strings.code).takeIf(String::isNotBlank)?.let { "$it ${strings.pulsePlays}" }.orEmpty()
                             },
-                            actions = YouTubeMusicSearchActions(
-                                playSong = { context, track ->
-                                    focusManager.clearFocus()
-                                    keyboardController?.hide()
-                                    viewModel.playFrom(deduplicateSearchSongs(listOf(track) + context), track)
-                                },
-                                openArtist = { hit ->
-                                    focusManager.clearFocus()
-                                    keyboardController?.hide()
-                                    viewModel.openArtistFromHit(hit)
-                                },
-                                openTopResult = openTopResult,
-                                shuffle = shuffleTopResult,
-                                mix = mixTopResult,
-                                openPlaylist = { playlist ->
-                                    focusManager.clearFocus()
-                                    keyboardController?.hide()
-                                    viewModel.openPlaylistHit(playlist)
-                                },
-                                openAlbum = { album ->
-                                    focusManager.clearFocus()
-                                    keyboardController?.hide()
-                                    viewModel.openAlbum(album)
-                                },
-                                trackActions = onTrackActions
-                            )
+                            actions = searchActions
                         )
                         if (filter != SearchFilter.All) {
                             item(key = "search-section-footer", contentType = "search-section-footer") {
@@ -16057,46 +16118,26 @@ private fun SearchScreen(viewModel: SearchViewModel, state: LevyraUiState, onTra
 
             TrackSelectionBar(
                 state = selection,
+                aboveRootDock = true,
                 allVisibleIds = selectableIds,
-                actions = TrackSelectionActions(
-                    onPlayNext = selectedTracks.takeIf { it.isNotEmpty() }?.let {
-                        {
-                            viewModel.playTracksNext(selectedTracks)
-                            selection.exit()
-                        }
-                    },
-                    onAddToQueue = selectedTracks.takeIf { it.isNotEmpty() }?.let {
-                        {
-                            viewModel.addTracksToQueue(selectedTracks)
-                            selection.exit()
-                        }
-                    },
-                    onAddToPlaylist = selectedTracks
-                        .filter { it.id.isNotBlank() }
-                        .takeIf { it.isNotEmpty() }
-                        ?.let { playlistTracks -> { batchAddTargets = playlistTracks } },
-                    onFavorite = selectedTracks.takeIf { it.isNotEmpty() }?.let {
-                        {
-                            viewModel.toggleFavorites(selectedTracks)
-                            selection.exit()
-                        }
-                    },
-                    onDownload = selectedTracks.takeIf { it.isNotEmpty() }?.let {
-                        {
-                            viewModel.exportTracks(selectedTracks, strings.offline)
-                            selection.exit()
-                        }
-                    }
+                actions = trackSelectionActions(
+                    state = selection,
+                    selectedTracks = selectedTracks,
+                    onPlayNext = viewModel::playTracksNext,
+                    onAddToQueue = viewModel::addTracksToQueue,
+                    onAddToPlaylist = { batchAddTargets = it },
+                    onFavorite = viewModel::toggleFavorites,
+                    onDownload = { tracks -> viewModel.exportTracks(tracks, strings.offline) }
                 ),
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
-                    .padding(
-                        start = 12.dp,
-                        end = 12.dp,
-                        bottom = if (state.currentTrack != null) 88.dp else 12.dp
-                    )
+                    .padding(horizontal = 12.dp)
             )
         }
+    }
+
+    appleExploreViewModel?.let { exploreViewModel ->
+        AppleMusicSearchDestination(appleDestination, exploreViewModel, backEnabled, onTrackActions) { appleDestination = null }
     }
 
     addTarget?.let { track ->
@@ -16130,290 +16171,6 @@ private fun SearchScreen(viewModel: SearchViewModel, state: LevyraUiState, onTra
                 selection.exit()
             }
         )
-    }
-}
-
-@OptIn(ExperimentalMaterial3ExpressiveApi::class)
-@Composable
-private fun SearchHeader(
-    query: String,
-    placeholder: String,
-    animatePlaceholder: Boolean,
-    isSearching: Boolean,
-    recognitionAvailable: Boolean,
-    recognitionBusy: Boolean,
-    onRecognize: () -> Unit,
-    onCancelRecognition: () -> Unit,
-    onQuery: (String) -> Unit,
-    onSearch: (String) -> Unit,
-    onClear: () -> Unit,
-    onBack: () -> Unit
-) {
-    val focusManager = LocalFocusManager.current
-    val keyboardController = LocalSoftwareKeyboardController.current
-    val context = LocalContext.current
-    val strings = LocalLevyraStrings.current
-
-    val speechRecognizerLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.StartActivityForResult()
-    ) { result ->
-        if (result.resultCode == Activity.RESULT_OK) {
-            val matches = result.data?.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS)
-            if (!matches.isNullOrEmpty()) {
-                val spokenText = matches[0]
-                onQuery(spokenText)
-                onSearch(spokenText)
-            }
-        }
-    }
-    val microphonePermission = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.RequestPermission()
-    ) { granted ->
-        if (granted) onRecognize()
-    }
-    val launchVoiceSearch = {
-        val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
-            putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
-            putExtra(RecognizerIntent.EXTRA_LANGUAGE, Locale.forLanguageTag(strings.code).toLanguageTag())
-            putExtra(RecognizerIntent.EXTRA_LANGUAGE_PREFERENCE, Locale.forLanguageTag(strings.code).toLanguageTag())
-            putExtra(RecognizerIntent.EXTRA_PROMPT, strings.listeningPrompt)
-        }
-        try {
-            speechRecognizerLauncher.launch(intent)
-        } catch (e: Exception) {
-            Toast.makeText(context, strings.voiceSearchUnsupported, Toast.LENGTH_SHORT).show()
-        }
-    }
-    val toggleRecognition = {
-        if (recognitionBusy) {
-            onCancelRecognition()
-        } else if (ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED) {
-            onRecognize()
-        } else {
-            microphonePermission.launch(Manifest.permission.RECORD_AUDIO)
-        }
-    }
-    if (LevyraIsYouTubeMusic) {
-        YouTubeMusicSearchHeader(
-            query = query,
-            placeholder = placeholder,
-            isSearching = isSearching,
-            recognitionAvailable = recognitionAvailable,
-            recognitionBusy = recognitionBusy,
-            onQuery = onQuery,
-            onSearch = { text ->
-                focusManager.clearFocus()
-                keyboardController?.hide()
-                onSearch(text)
-            },
-            onClear = onClear,
-            onBack = {
-                if (query.isBlank()) onBack() else onClear()
-                focusManager.clearFocus()
-                keyboardController?.hide()
-            },
-            onVoice = launchVoiceSearch,
-            onRecognize = toggleRecognition
-        )
-        return
-    }
-
-    val animationsEnabled = LocalAnimationsEnabled.current
-    val fieldInteraction = remember { MutableInteractionSource() }
-    val fieldFocused by fieldInteraction.collectIsFocusedAsState()
-    val scheme = MaterialTheme.colorScheme
-    val fieldContainer by animateColorAsState(
-        targetValue = searchFieldContainer(fieldFocused, scheme),
-        animationSpec = if (animationsEnabled) LevyraMotion.standard() else snap(),
-        label = "search-field-container"
-    )
-    val focusRingAlpha by animateFloatAsState(
-        targetValue = if (fieldFocused) 1f else 0f,
-        animationSpec = if (animationsEnabled) LevyraMotion.standard() else snap(),
-        label = "search-field-ring"
-    )
-    val searchBadgeColor by animateColorAsState(
-        targetValue = if ((fieldFocused || query.isNotEmpty()) && !LevyraIsPrism) scheme.primaryContainer else Color.Transparent,
-        animationSpec = if (animationsEnabled) LevyraMotion.standard() else snap(),
-        label = "search-field-badge"
-    )
-    val focusRing = remember(scheme.primary, scheme.tertiary, focusRingAlpha) {
-        searchFocusRing(scheme, focusRingAlpha)
-    }
-    val searchIconTint by animateColorAsState(
-        targetValue = searchFieldIconTint(fieldFocused || query.isNotEmpty(), scheme),
-        animationSpec = if (animationsEnabled) LevyraMotion.standard() else snap(),
-        label = "search-field-icon"
-    )
-    val fieldCorner = levyraExpressiveToggleCorner(
-        checked = fieldFocused,
-        unchecked = searchFieldCorner(28.dp),
-        checkedCorner = searchFieldCorner(20.dp),
-        label = "search-field-corner"
-    )
-
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(top = 8.dp, bottom = 6.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(4.dp)
-    ) {
-        LevyraBackButton(
-            onClick = {
-                if (query.isBlank()) onBack() else onClear()
-                focusManager.clearFocus()
-                keyboardController?.hide()
-            },
-            contentDescription = strings.back
-        )
-
-        Surface(
-            color = fieldContainer,
-            border = if (LevyraIsSpotify) null else BorderStroke(if (LevyraIsPrism) 1.5.dp else 2.dp, focusRing),
-            shape = RoundedCornerShape(fieldCorner),
-            modifier = Modifier
-                .weight(1f)
-                .heightIn(min = 60.dp)
-        ) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(start = 8.dp, end = 6.dp, top = 4.dp, bottom = 4.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(6.dp)
-            ) {
-                Box(
-                    contentAlignment = Alignment.Center,
-                    modifier = Modifier
-                        .size(40.dp)
-                        .background(searchBadgeColor, MaterialShapes.Cookie4Sided.toShape())
-                ) {
-                    Icon(
-                        imageVector = Icons.Rounded.Search,
-                        contentDescription = null,
-                        tint = searchIconTint,
-                        modifier = Modifier.size(22.dp)
-                    )
-                }
-
-                BasicTextField(
-                    value = query,
-                    onValueChange = onQuery,
-                    modifier = Modifier.weight(1f).padding(start = 4.dp),
-                    interactionSource = fieldInteraction,
-                    singleLine = true,
-                    textStyle = TextStyle(
-                        color = if (LevyraIsTorque) Color(0xFF111111) else if (LevyraIsSpotify) SpotifyDesign.searchFieldText else LevyraText,
-                        fontWeight = FontWeight.SemiBold,
-                        fontSize = 16.sp,
-                        letterSpacing = (-0.1).sp
-                    ),
-                    cursorBrush = SolidColor(if (LevyraIsTorque) LevyraActivePalette.blue else if (LevyraIsSpotify) SpotifyDesign.greenPress else LevyraCyan),
-                    decorationBox = { innerTextField ->
-                        Box(contentAlignment = Alignment.CenterStart) {
-                            if (query.isEmpty()) {
-                                Crossfade(
-                                    targetState = placeholder,
-                                    animationSpec = if (animatePlaceholder) tween(360) else snap(),
-                                    label = "search-taste-placeholder"
-                                ) { text ->
-                                    BasicText(
-                                        text = text,
-                                        style = TextStyle(
-                                            color = if (LevyraIsTorque || LevyraIsSpotify) Color(0xFF5A5A5A) else LevyraMuted.copy(alpha = 0.82f),
-                                            fontWeight = FontWeight.Medium,
-                                            fontSize = 15.sp
-                                        ),
-                                        maxLines = 1,
-                                        overflow = TextOverflow.Ellipsis,
-                                        autoSize = TextAutoSize.StepBased(minFontSize = 10.sp, maxFontSize = 15.sp)
-                                    )
-                                }
-                            }
-                            innerTextField()
-                        }
-                    }
-                )
-
-                if (isSearching) {
-                    LevyraLoadingIndicator(
-                        modifier = Modifier.size(24.dp),
-                        color = LevyraCyan
-                    )
-                } else {
-                    AnimatedVisibility(
-                        visible = query.isNotEmpty(),
-                        enter = if (animationsEnabled) fadeIn() + scaleIn(initialScale = 0.7f) else fadeIn(snap()),
-                        exit = if (animationsEnabled) fadeOut() + scaleOut(targetScale = 0.7f) else fadeOut(snap())
-                    ) {
-                        IconButton(
-                            onClick = onClear,
-                            modifier = Modifier.size(38.dp)
-                        ) {
-                            Icon(
-                                imageVector = Icons.Rounded.Close,
-                                contentDescription = strings.clear,
-                                tint = LevyraMuted,
-                                modifier = Modifier.size(18.dp)
-                            )
-                        }
-                    }
-                }
-
-                Row(
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(50))
-                        .background(scheme.surfaceContainerHighest.copy(alpha = if (fieldFocused) 0.9f else 0.6f)),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                IconButton(
-                    onClick = launchVoiceSearch,
-                    modifier = Modifier.size(38.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Rounded.Mic,
-                        contentDescription = strings.voice,
-                        tint = scheme.onSurfaceVariant,
-                        modifier = Modifier.size(20.dp)
-                    )
-                }
-
-                if (recognitionAvailable) {
-                    val recognitionRotation = if (recognitionBusy && animationsEnabled) {
-                        val spin = rememberInfiniteTransition(label = "search-recognition-spin")
-                        spin.animateFloat(
-                            initialValue = 0f,
-                            targetValue = 360f,
-                            animationSpec = infiniteRepeatable(tween(2_400, easing = LinearEasing)),
-                            label = "search-recognition-rotation"
-                        ).value
-                    } else {
-                        0f
-                    }
-                    Box(
-                        contentAlignment = Alignment.Center,
-                        modifier = Modifier
-                            .padding(4.dp)
-                            .size(40.dp)
-                            .graphicsLayer { rotationZ = recognitionRotation }
-                            .clip(MaterialShapes.Cookie9Sided.toShape())
-                            .background(if (recognitionBusy) scheme.primary else scheme.primaryContainer)
-                            .clickable(onClickLabel = strings.recognizeMusic, role = Role.Button, onClick = toggleRecognition)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Rounded.GraphicEq,
-                            contentDescription = strings.recognizeMusic,
-                            tint = if (recognitionBusy) scheme.onPrimary else scheme.onPrimaryContainer,
-                            modifier = Modifier
-                                .size(19.dp)
-                                .graphicsLayer { rotationZ = -recognitionRotation }
-                        )
-                    }
-                }
-                }
-            }
-        }
     }
 }
 
@@ -19622,7 +19379,8 @@ internal data class MiniPlayerModel(
     val animated: Boolean,
     val gesturesEnabled: Boolean,
     val swipeTrackChangeEnabled: Boolean,
-    val stepDirection: Int
+    val stepDirection: Int,
+    val isFavorite: Boolean = false
 )
 
 internal data class MiniPlayerPlaybackActions(
@@ -19630,7 +19388,8 @@ internal data class MiniPlayerPlaybackActions(
     val toggle: () -> Unit,
     val next: () -> Unit,
     val previous: () -> Unit,
-    val close: () -> Unit
+    val close: () -> Unit,
+    val favorite: () -> Unit = {}
 )
 
 internal data class MiniPlayerExpansionActions(
@@ -20800,6 +20559,9 @@ private fun SettingsOverlay(
                                     enabled = interfaceSettings.skin == LevyraSkin.Default,
                                     onClick = onOpenNavigationStudio
                                 )
+                            }
+                            if (interfaceSettings.skin.supportsDockMorph && interfaceSettings.skin != LevyraSkin.Default) {
+                                item { DockScrollEffectSkinRow(interfaceSettings, onInterfaceSettings) }
                             }
                             item {
                                 val widgetStudioContext = LocalContext.current
@@ -22769,7 +22531,7 @@ private fun String.smartOfflineEntries(): Set<String> = split(',')
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun SettingsChoiceRow(
+internal fun SettingsChoiceRow(
     icon: ImageVector,
     title: String,
     subtitle: String,
@@ -23036,7 +22798,7 @@ private fun SettingsSectionLabel(text: String) {
 }
 
 @Composable
-private fun SettingsToggle(icon: ImageVector, title: String, subtitle: String, checked: Boolean, onCheckedChange: (Boolean) -> Unit) {
+internal fun SettingsToggle(icon: ImageVector, title: String, subtitle: String, checked: Boolean, onCheckedChange: (Boolean) -> Unit) {
     SettingsTile(checked = checked, onCheckedChange = onCheckedChange) {
         Row(
             modifier = Modifier.padding(start = 14.dp, end = 16.dp, top = 14.dp, bottom = 14.dp),
@@ -26129,11 +25891,13 @@ internal fun MiniPlayer(
         liveRadio = liveRadio
     )
 
+    val dockMorph = LocalDockMorph.current
     Box(modifier = Modifier.fillMaxWidth()) {
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(
+                .dockMorphPadding(
+                    dockMorph,
                     start = MiniPlayerCardGutter,
                     end = MiniPlayerCardGutter,
                     top = MiniPlayerTrayTop,
@@ -26143,7 +25907,7 @@ internal fun MiniPlayer(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .dockLerpHeight(compaction, LevyraPlayerDesign.MiniHeight, LevyraPlayerDesign.MiniHeightCompact)
+                    .dockMorphHeight(dockMorph, compaction, LevyraPlayerDesign.MiniHeight, LevyraPlayerDesign.MiniHeightCompact)
                     .playerMorphAnchor(morphAnchors, PlayerMorphSlot.MiniCard)
                     .shadow(
                         elevation = MiniPlayerGlowElevation,
@@ -26504,7 +26268,14 @@ private fun ExploreScreen(
     LaunchedEffect(state.exploreOpenRequest) {
         val requestedZoneId = state.exploreOpenRequest ?: return@LaunchedEffect
         exploreMoodReturn = null
-        exploreDestination = exploreMoodDestination(requestedZoneId)
+        val samplesIndex = exploreSamplesRequestIndex(requestedZoneId)
+        if (samplesIndex != null) {
+            exploreDestination = null
+            samplesStartIndex = samplesIndex
+            viewModel.beginSamplesPlayback()
+        } else {
+            exploreDestination = exploreMoodDestination(requestedZoneId)
+        }
         viewModel.consumeExploreOpenRequest()
     }
 
@@ -26532,8 +26303,12 @@ private fun ExploreScreen(
     val freshSection = remember(freshScopes, freshFeed, momentPages, freshRegionLabel) {
         ExploreFreshSection(freshScopes, freshFeed, momentPages, freshRegionLabel)
     }
+    val spotifyExplore = LevyraIsSpotify
+    val moodsInSearch = spotifyExplore || LevyraIsAppleMusic
     val rows = remember(
         zones,
+        spotifyExplore,
+        moodsInSearch,
         state.isFreshCurrentsLoading,
         freshFeed.spotlight.isNotEmpty(),
         freshScopes.size > 1,
@@ -26544,7 +26319,9 @@ private fun ExploreScreen(
             isFreshLoading = state.isFreshCurrentsLoading,
             hasFreshTracks = freshFeed.spotlight.isNotEmpty(),
             hasFreshScopes = freshScopes.size > 1,
-            hasFreshMoment = momentPages.isNotEmpty()
+            hasFreshMoment = momentPages.isNotEmpty(),
+            spotifyStyle = spotifyExplore,
+            moodsInSearch = moodsInSearch
         )
     }
     val availableAnchors = remember(rows) { exploreAvailableAnchors(rows) }
@@ -26710,6 +26487,7 @@ private fun ExploreContentRow(
 ) {
     val strings = LocalLevyraStrings.current
     when (row) {
+        ExploreRow.Samples -> SpotifyExploreSamples(state, viewModel)
         ExploreRow.Shortcuts -> Column(
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
@@ -27112,7 +26890,7 @@ private fun ExploreMoodCollectionDestination(
 }
 
 @Composable
-private fun exploreDestinationBottomInset(state: LevyraUiState): Dp = tabBarBottomContentInset(
+internal fun exploreDestinationBottomInset(state: LevyraUiState): Dp = tabBarBottomContentInset(
     miniPlayerVisible = state.currentTrack != null,
     animationsEnabled = state.animationsEnabled
 )
@@ -27581,6 +27359,7 @@ internal fun BottomTabs(
         label = "tab-indicator-position"
     )
     val indicatorColor = selectedTint.copy(alpha = if (isLight) 0.08f else 0.11f)
+    val dockMorph = LocalDockMorph.current
 
     Column(modifier = Modifier.fillMaxWidth()) {
             BoxWithConstraints(
@@ -27588,6 +27367,7 @@ internal fun BottomTabs(
                     .dockClipHeight(compaction, LevyraTabBarHeight - LevyraTabBarCompactHeight)
                     .fillMaxWidth()
                     .height(LevyraTabBarHeight)
+                    .dockMorphTray(dockMorph, entries.size, selectedIndex)
             ) {
                 val slotWidth = maxWidth / entries.size
                 val indicatorWidth = (slotWidth - 34.dp).coerceIn(40.dp, 52.dp)
@@ -27605,7 +27385,7 @@ internal fun BottomTabs(
                             )
                         }
                         .size(width = indicatorWidth, height = LevyraTabIndicatorHeight)
-                        .background(indicatorColor, LevyraTabIndicatorShape)
+                        .dockMorphAnchorBackground(dockMorph, indicatorColor, LevyraTabIndicatorShape)
                 )
 
                 Row(
@@ -28055,43 +27835,9 @@ private fun skinHomeStyleLabel(style: HomeStyle): String =
 private fun skinManagesStudio(id: String): Boolean =
     LevyraSkinManagesLayout && id in setOf("theme", "mini_player", "navigation")
 
-private fun searchFieldContainer(focused: Boolean, scheme: androidx.compose.material3.ColorScheme): Color = when {
-    LevyraIsTorque -> Color(0xFFF1F1F1)
-    LevyraIsSpotify -> SpotifyDesign.searchField
-    LevyraIsYouTubeMusic -> YouTubeMusicDesign.surfaceHigh
-    LevyraIsAppleMusic -> AppleMusicDesign.fill
-    LevyraIsIvory -> LevyraActivePalette.ink
-    LevyraIsPrism -> if (focused) scheme.surfaceContainerHigh else scheme.surfaceContainer
-    else -> if (focused) scheme.surfaceContainerHighest else scheme.surfaceContainerHigh
-}
 
-private fun searchFieldIconTint(active: Boolean, scheme: androidx.compose.material3.ColorScheme): Color = when {
-    LevyraIsTorque -> Color(0xFF111111)
-    LevyraIsSpotify -> SpotifyDesign.searchFieldText
-    LevyraIsYouTubeMusic -> YouTubeMusicDesign.textSecondary
-    LevyraIsAppleMusic -> AppleMusicDesign.secondaryLabel
-    LevyraIsIvory -> LevyraText
-    LevyraIsPrism -> if (active) scheme.primary else scheme.onSurfaceVariant
-    else -> if (active) scheme.onPrimaryContainer else scheme.onSurfaceVariant
-}
 
-private fun searchFieldCorner(fallback: Dp): Dp = when {
-    LevyraIsNocturne -> Nocturne78Design.cardCorner
-    LevyraIsSpotify -> SpotifyDesign.corner
-    LevyraIsYouTubeMusic -> 20.dp
-    LevyraIsAppleMusic -> AppleMusicDesign.cornerL
-    LevyraIsPrism -> PrismDesign.controlCorner
-    else -> fallback
-}
 
-private fun searchFocusRing(scheme: androidx.compose.material3.ColorScheme, focusRingAlpha: Float): Brush =
-    if (LevyraIsPrism) SolidColor(scheme.primary.copy(alpha = 0.7f * focusRingAlpha)) else Brush.linearGradient(
-        listOf(
-            scheme.primary.copy(alpha = 0.9f * focusRingAlpha),
-            scheme.tertiary.copy(alpha = 0.75f * focusRingAlpha),
-            scheme.primary.copy(alpha = 0.35f * focusRingAlpha)
-        )
-    )
 
 @Composable
 private fun SettingsHubHeader(onClose: () -> Unit) {
@@ -28238,3 +27984,17 @@ private fun artistBiographyBackground(accentBrush: Brush): Modifier =
     Modifier.clip(if (LevyraSkinManagesLayout) RoundedCornerShape(SkinChrome.outerCorner) else ArtistBiographyShape)
         .background(LevyraPanel)
         .then(if (LevyraSkinManagesLayout) Modifier else Modifier.background(accentBrush))
+
+private fun LazyListScope.studioHomeFilteredSections(c: StudioHomeContext, flowShortcutTracks: List<Track>, statusBarTop: Dp, homeTopPadding: Dp, spotifyFilter: SpotifyHomeFilter, shownOrder: List<HomeSectionId>, youtubeMusicHome: com.luc4n3x.levyra.ui.youtubemusic.YoutubeMusicHomeShelfUi?, homeRadio: HomeRadioState, homeDiscovery: DiscoveryHomeHandle?, spotify: Boolean) {
+    if (spotify && spotifyFilter in setOf(SpotifyHomeFilter.Music, SpotifyHomeFilter.Following, SpotifyHomeFilter.Podcasts)) {
+        spotifyHomeFilterItems(spotifyFilter, c.state, c.homeAlbums, c.newReleases?.tracks.orEmpty(), c.viewModel, c.onTrackActions)
+        return
+    }
+    studioHomeHeaderItems(c, flowShortcutTracks, statusBarTop, homeTopPadding, spotifyFilter.accepts(HomeSectionId.Spotlight))
+    if (c.stagedSpotlight != null && !c.studioLayout.isHidden(HomeSectionId.Discovery) &&
+        (!spotify || spotifyFilter.accepts(HomeSectionId.Discovery))
+    ) {
+        discoverySection(homeDiscovery, c.homeStyle, c.styleSpec, c.homeAnimationsEnabled)
+    }
+    studioHomeSections(c, shownOrder, youtubeMusicHome, homeRadio, homeDiscovery)
+}

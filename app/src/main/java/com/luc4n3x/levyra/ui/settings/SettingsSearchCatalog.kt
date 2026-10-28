@@ -6,6 +6,7 @@ import com.luc4n3x.levyra.ui.i18n.advancedPrefetchCopy
 import com.luc4n3x.levyra.ui.i18n.advancedPrefetchMobileDataCopy
 import com.luc4n3x.levyra.ui.i18n.automationCopy
 import com.luc4n3x.levyra.ui.i18n.deviceIntegrationCopy
+import com.luc4n3x.levyra.ui.i18n.dockMorph
 import com.luc4n3x.levyra.ui.i18n.parametricEqCopy
 import com.luc4n3x.levyra.ui.i18n.smartOfflineCopy
 import com.luc4n3x.levyra.ui.preloadNextTrack
@@ -69,6 +70,7 @@ private fun MutableList<SettingsSearchEntry>.appearanceEntries(strings: LevyraSt
     entry("design.animations", strings.animations, strings.animationsSubtitle, "animation motion", categories.design)
     entry("design.visual_performance", strings.visualPerformance, strings.visualPerformanceFullSubtitle, "${strings.visualPerformanceAuto} ${strings.visualPerformanceSmooth} performance fps", categories.design)
     entry("design.liquid_glass", strings.liquidGlass, strings.liquidGlassSubtitle, "glass blur transparency", categories.design)
+    entry("design.dock_morph", strings.dockMorph().title, strings.dockMorph().subtitle, "dock mini player navigation bar compact scroll merge", categories.design)
     entry("design.motion_artwork", strings.motionArtwork, strings.motionArtworkSubtitle, "canvas animated artwork video cover", categories.design)
     entry("design.canvas_quality", strings.canvasQuality, strings.canvasQualitySubtitle, "canvas video quality resolution", categories.design)
     entry("design.canvas_source", strings.canvasSource, strings.canvasSourceSubtitle, "canvas provider source", categories.design)
@@ -133,7 +135,7 @@ private fun MutableList<SettingsSearchEntry>.audioEntries(
     val parametric = strings.parametricEqCopy()
     entry("audio.engine", strings.audioEngine, strings.audioEngineSubtitle, "audio sound output", categories.audio)
     entry("audio.quality", strings.audioQuality, strings.audioSectionQuality, "${strings.audioQualityAuto} ${strings.audioQualityHigh} ${strings.audioQualityLow} quality bitrate streaming", categories.audio)
-    entry("audio.alternative_hq", strings.alternativeAudioTitle, strings.alternativeAudioSubtitle, "${strings.alternativeAudioPrefer320} 320 kbps jiosaavn hq hifi bitrate", categories.audio)
+    entry("audio.alternative_hq", strings.alternativeAudioTitle, strings.alternativeAudioSubtitle, "${strings.alternativeAudioPrefer320} ${strings.alternativeAudioPreferLossless} 320 kbps flac lossless hi-res jiosaavn hq hifi bitrate", categories.audio)
     entry("audio.equalizer", strings.equalizer, strings.equalizerSubtitle, "${parametric.graphicEq} ${parametric.parametricEq} eq equaliser preset bands", categories.audio)
     entry("audio.autoeq", strings.autoEqCatalog, strings.autoEqCatalogHint, "${strings.autoEqImport} autoeq eq headphones", categories.audio)
     entry("audio.preamp", strings.preamp, strings.audioSectionEqualizer, "preamp gain eq", categories.audio)

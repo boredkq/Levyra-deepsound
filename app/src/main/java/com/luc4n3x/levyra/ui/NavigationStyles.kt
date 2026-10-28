@@ -74,6 +74,7 @@ import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.layout.layout
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.role
@@ -102,7 +103,14 @@ import com.luc4n3x.levyra.domain.NavMotion
 import com.luc4n3x.levyra.domain.NavStyle
 import com.luc4n3x.levyra.domain.NavSurfaceTone
 import com.luc4n3x.levyra.domain.NavTuning
+import com.luc4n3x.levyra.ui.components.DockMorph
+import com.luc4n3x.levyra.ui.components.DockMorphFrame
+import com.luc4n3x.levyra.ui.components.DockMorphRow
+import com.luc4n3x.levyra.ui.components.DockMorphSlots
+import com.luc4n3x.levyra.ui.components.LocalDockMorph
 import com.luc4n3x.levyra.ui.components.dockClipHeight
+import com.luc4n3x.levyra.ui.components.dockMorphFrame
+import com.luc4n3x.levyra.ui.components.dockMorphReveal
 import com.luc4n3x.levyra.ui.components.dockLerpHeight
 import com.luc4n3x.levyra.ui.components.dockLerpSize
 import com.luc4n3x.levyra.ui.components.levyraPressable
@@ -133,9 +141,15 @@ private const val NavTextContrast = 4.5f
 
 internal val LocalNavDockExtraClearance = compositionLocalOf { 0.dp }
 
-internal fun navDockExtraClearance(style: NavStyle, tuning: NavTuning): Dp {
+@Composable
+internal fun rememberNavDockExtraClearance(style: NavStyle, tuning: NavTuning): Dp {
+    val height = navDockHeight(tuning.heightDp.dp, navLabelRoom(tuning.labels) + navIndicatorRoom(tuning))
+    return navDockExtraClearance(style, tuning, height)
+}
+
+internal fun navDockExtraClearance(style: NavStyle, tuning: NavTuning, height: Dp = tuning.heightDp.dp): Dp {
     if (style == NavStyle.Original) return 0.dp
-    val footprint = tuning.heightDp.dp + if (style.floating) StyledNavFloatingBottom else 0.dp
+    val footprint = height + if (style.floating) StyledNavFloatingBottom else 0.dp
     return (footprint - StyledNavOriginalFootprint).coerceAtLeast(0.dp)
 }
 
@@ -149,6 +163,9 @@ private const val SplitOrbTilt = -14f
 private val DockLinkSeamCorner = 10.dp
 private val DockLinkFusedCorner = 4.dp
 private val ConnectedPreviewHeight = 64.dp
+private val NavMorphTrayInset = 8.dp
+private val NavMorphTrayMinRow = 40.dp
+private const val NavMorphBadgeScale = 0.84f
 
 @Stable
 internal class DockLink(
@@ -549,11 +566,28 @@ private fun Modifier.navCapsule(
     .navBackground(background, colors, opacity, glass)
     .border(LevyraPlayerDesign.Hairline, colors.rim, shape)
 
-private fun navLabelRoom(mode: NavLabelMode): Dp = when (mode) {
-    NavLabelMode.Always, NavLabelMode.ActiveOnly -> 16.dp
-    NavLabelMode.Compact -> 12.dp
+internal fun navLabelRoom(mode: NavLabelMode, lineHeight: Dp): Dp = when (mode) {
+    NavLabelMode.Always, NavLabelMode.ActiveOnly -> lineHeight + 2.dp
+    NavLabelMode.Compact -> lineHeight
     NavLabelMode.Never, NavLabelMode.Expanding -> 0.dp
 }
+
+@Composable
+private fun navLabelRoom(mode: NavLabelMode): Dp {
+    val fontSize = if (mode == NavLabelMode.Compact) 10.sp else 11.sp
+    val lineHeight = with(LocalDensity.current) { LevyraTypeRhythm.lineHeight(fontSize).toDp() }
+    return navLabelRoom(mode, lineHeight)
+}
+
+private fun navDockHeight(requested: Dp, labelRoom: Dp): Dp =
+    maxOf(requested, StyledNavIconBox + labelRoom + 8.dp)
+
+private fun navIndicatorRoom(tuning: NavTuning): Dp =
+    if (tuning.indicator == NavIndicator.Dot && tuning.labels != NavLabelMode.Expanding) {
+        5.dp + 2.5.dp * (tuning.indicatorScale / 100f)
+    } else {
+        0.dp
+    }
 
 private fun navIconTop(height: Dp, labelRoom: Dp): Dp =
     ((height - StyledNavIconBox - labelRoom) / 2).coerceAtLeast(4.dp)
@@ -570,7 +604,7 @@ private fun Modifier.navFloatingInset(floating: Boolean): Modifier = if (floatin
     this
 }
 
-private class NavDockGeometry(
+internal class NavDockGeometry(
     val height: Dp,
     val compactHeight: Dp,
     val labelRoom: Dp,
@@ -578,7 +612,9 @@ private class NavDockGeometry(
     val lift: Dp
 )
 
-private fun navDockGeometry(floating: Boolean, collapsible: Boolean, height: Dp, labels: NavLabelMode): NavDockGeometry {
+internal fun navDockGeometry(floating: Boolean, collapsible: Boolean, requestedHeight: Dp, labelRoom: Dp, indicatorRoom: Dp = 0.dp): NavDockGeometry {
+    val contentRoom = labelRoom + indicatorRoom
+    val height = navDockHeight(requestedHeight, contentRoom)
     val compactHeight = if (!collapsible) {
         height
     } else if (floating) {
@@ -586,8 +622,7 @@ private fun navDockGeometry(floating: Boolean, collapsible: Boolean, height: Dp,
     } else {
         (height - StyledNavTrayShrink).coerceIn(StyledNavMinTouch, StyledNavCompactFootprint)
     }.coerceAtMost(height)
-    val labelRoom = navLabelRoom(labels)
-    val iconTop = navIconTop(height, labelRoom)
+    val iconTop = navIconTop(height, contentRoom)
     val lift = if (floating) (iconTop - navIconTop(compactHeight, 0.dp)).coerceAtLeast(0.dp) else 0.dp
     return NavDockGeometry(height, compactHeight, labelRoom, iconTop, lift)
 }
@@ -643,6 +678,51 @@ private fun Modifier.navDockSizing(floating: Boolean, compaction: () -> Float, g
         dockClipHeight(compaction, geometry.height - geometry.compactHeight).height(geometry.height)
     }
 
+private fun navMorphRow(floating: Boolean, tuning: NavTuning, geometry: NavDockGeometry, orbReserve: Dp, gap: Dp): DockMorphRow =
+    if (floating) {
+        DockMorphRow(
+            leading = StyledNavFloatingGutter,
+            trailing = StyledNavFloatingGutter + orbReserve,
+            height = geometry.compactHeight,
+            bottom = StyledNavFloatingBottom,
+            gap = gap
+        )
+    } else {
+        DockMorphRow(
+            leading = 0.dp,
+            trailing = maxOf(tuning.paddingDp.dp, NavMorphTrayInset),
+            height = (geometry.compactHeight - NavMorphTrayInset).coerceAtLeast(NavMorphTrayMinRow),
+            gap = NavMorphTrayInset
+        )
+    }
+
+private fun Modifier.navMorphCapsule(
+    floating: Boolean,
+    morph: DockMorph?,
+    frame: DockMorphFrame,
+    compaction: () -> Float,
+    geometry: NavDockGeometry,
+    surface: Modifier,
+    slots: DockMorphSlots,
+    row: DockMorphRow
+): Modifier {
+    val framed = navFloatingInset(floating).fillMaxWidth()
+    val sized = if (floating) framed.dockMorphFrame(morph, frame, geometry.compactHeight) else framed
+    return sized
+        .navDockSizing(floating, compaction, geometry)
+        .then(surface)
+        .dockMorphReveal(morph, slots, row, frame.takeIf { floating })
+}
+
+private fun navMorphSlots(count: Int, index: Int, tuning: NavTuning, expansion: NavExpansion?): DockMorphSlots =
+    DockMorphSlots(
+        count = count,
+        index = index,
+        padding = tuning.paddingDp.dp,
+        spacing = tuning.spacingDp.dp,
+        selectedWeight = expansion?.let { 1f + it.grow } ?: 1f
+    )
+
 private fun Modifier.dockGapWidth(gap: () -> Dp): Modifier = layout { measurable, _ ->
     val width = gap().roundToPx().coerceAtLeast(0)
     val placeable = measurable.measure(Constraints.fixed(width, 0))
@@ -695,14 +775,18 @@ internal fun StyledBottomTabs(
     )
     val floating = style.floating
     val collapsible = style != NavStyle.YtMusic
-    val geometry = remember(floating, collapsible, tuning.heightDp, tuning.labels) {
-        navDockGeometry(floating, collapsible, tuning.heightDp.dp, tuning.labels)
+    val labelRoom = navLabelRoom(tuning.labels)
+    val indicatorRoom = navIndicatorRoom(tuning)
+    val geometry = remember(floating, collapsible, tuning.heightDp, labelRoom, indicatorRoom) {
+        navDockGeometry(floating, collapsible, tuning.heightDp.dp, labelRoom, indicatorRoom)
     }
     val depth = tuning.intensity / 100f
     val outer = minOf(tuning.cornerDp.dp, geometry.height / 2)
     val expansion = remember(style, tuning.labels) {
         if (tuning.labels == NavLabelMode.Expanding) navExpansion(style) else null
     }
+    val morph = LocalDockMorph.current
+    val morphFrame = remember { DockMorphFrame() }
 
     Column(modifier = Modifier.fillMaxWidth()) {
         if (searchEntry != null) {
@@ -730,11 +814,16 @@ internal fun StyledBottomTabs(
                 navDockSurface(style, colors, tuning.background, tuning.opacity, glass, shape, depth, link, outer)
             }
             StyledTabCapsule(
-                modifier = Modifier
-                    .navFloatingInset(floating)
-                    .fillMaxWidth()
-                    .navDockSizing(floating, compaction, geometry)
-                    .then(surface),
+                modifier = Modifier.navMorphCapsule(
+                    floating = floating,
+                    morph = morph,
+                    frame = morphFrame,
+                    compaction = compaction,
+                    geometry = geometry,
+                    surface = surface,
+                    slots = navMorphSlots(entries.size, restingIndex, tuning, expansion),
+                    row = navMorphRow(floating, tuning, geometry, 0.dp, LiquidCapsuleOrbGap)
+                ),
                 entries = entries,
                 selected = selected,
                 indicatorIndex = selectedIndex,
@@ -747,7 +836,8 @@ internal fun StyledBottomTabs(
                 floating = floating,
                 compaction = compaction,
                 expansion = expansion,
-                onSelect = onSelect
+                onSelect = onSelect,
+                badge = style != NavStyle.LiquidCapsule
             )
         }
         if (applySystemInset) {
@@ -771,10 +861,12 @@ private fun StyledTabCapsule(
     floating: Boolean,
     compaction: () -> Float,
     expansion: NavExpansion?,
-    onSelect: (LevyraTab) -> Unit
+    onSelect: (LevyraTab) -> Unit,
+    badge: Boolean = false
 ) {
     val padding = tuning.paddingDp.dp
     val spacing = tuning.spacingDp.dp
+    val morph = LocalDockMorph.current.takeIf { badge }
     BoxWithConstraints(modifier = modifier) {
         val slotWidth = ((maxWidth - padding * 2 - spacing * (entries.size - 1)) / entries.size).coerceAtLeast(0.dp)
         Box(
@@ -822,6 +914,19 @@ private fun StyledTabCapsule(
                                 stretch = motion.stretch,
                                 colors = colors
                             )
+                            if (morph != null) {
+                                val slotPx = slotWidth.toPx()
+                                val leading = padding.toPx() + (slotPx + spacing.toPx()) * indicatorIndex + slotPx / 2f
+                                drawDockMorphBadge(
+                                    center = Offset(
+                                        if (layoutDirection == LayoutDirection.Rtl) size.width - leading else leading,
+                                        geometry.iconTop.toPx() + StyledNavIconBox.toPx() / 2f
+                                    ),
+                                    diameter = minOf(slotPx, geometry.compactHeight.toPx()) * NavMorphBadgeScale,
+                                    fraction = morph.fraction,
+                                    color = colors.indicator
+                                )
+                            }
                         }
                 )
                 StyledTabRow(
@@ -865,6 +970,13 @@ private fun SplitDockRow(
         label = "split-dock-detach"
     )
     val liquid = style == NavStyle.LiquidCapsule
+    val morph = LocalDockMorph.current
+    val morphFrame = remember { DockMorphFrame() }
+    val orbGap = when {
+        liquid -> LiquidCapsuleOrbGap
+        searchSelected -> SplitDockDetachedGap
+        else -> SplitDockJoinedGap
+    }
     val capsuleSurface = remember(liquid, colors, tuning.background, tuning.opacity, glass, depth, outer, detach) {
         if (liquid) {
             Modifier.navLiquidGlass(colors, tuning.opacity, glass, RoundedCornerShape(outer), depth)
@@ -883,8 +995,15 @@ private fun SplitDockRow(
         StyledTabCapsule(
             modifier = Modifier
                 .weight(1f)
+                .dockMorphFrame(morph, morphFrame, geometry.compactHeight)
                 .navDockSizing(true, compaction, geometry)
-                .then(capsuleSurface),
+                .then(capsuleSurface)
+                .dockMorphReveal(
+                    morph = morph,
+                    slots = navMorphSlots(entries.size, restingIndex, tuning, expansion),
+                    row = navMorphRow(true, tuning, geometry, geometry.compactHeight + orbGap, orbGap),
+                    frame = morphFrame
+                ),
             entries = entries,
             selected = selected,
             indicatorIndex = restingIndex,
@@ -897,7 +1016,8 @@ private fun SplitDockRow(
             floating = true,
             compaction = compaction,
             expansion = expansion,
-            onSelect = onSelect
+            onSelect = onSelect,
+            badge = !liquid
         )
         Spacer(
             modifier = Modifier.dockGapWidth {
@@ -1381,7 +1501,6 @@ private fun StyledTabLabel(
         overflow = TextOverflow.Ellipsis,
         textAlign = TextAlign.Center,
         modifier = Modifier
-            .height(if (compact) 12.dp else 14.dp)
             .graphicsLayer {
                 val fold = foldLabel?.invoke()?.coerceIn(0f, 1f) ?: 0f
                 alpha = labelAlpha * (1f - fold)

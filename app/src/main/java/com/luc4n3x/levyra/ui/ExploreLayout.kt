@@ -96,6 +96,10 @@ internal sealed interface ExploreRow {
         override val key: String = "explore-mix-tools"
     }
 
+    data object Samples : ExploreRow {
+        override val key: String = "explore-samples"
+    }
+
     data class MoodRail(val zones: List<ExploreZone>) : ExploreRow {
         override val key: String = "explore-mood-rail"
     }
@@ -106,10 +110,13 @@ internal fun buildExploreRows(
     isFreshLoading: Boolean,
     hasFreshTracks: Boolean,
     hasFreshScopes: Boolean = false,
-    hasFreshMoment: Boolean = false
+    hasFreshMoment: Boolean = false,
+    spotifyStyle: Boolean = false,
+    moodsInSearch: Boolean = spotifyStyle
 ): List<ExploreRow> {
     val rows = mutableListOf<ExploreRow>()
     rows += ExploreRow.Shortcuts
+    if (spotifyStyle) rows += ExploreRow.Samples
     rows += ExploreRow.Header(ExploreAnchor.Fresh)
     when {
         hasFreshTracks -> {
@@ -122,7 +129,7 @@ internal fun buildExploreRows(
     }
 
     val distinctZones = zones.distinctBy { it.id }
-    if (distinctZones.isNotEmpty()) {
+    if (distinctZones.isNotEmpty() && !moodsInSearch) {
         rows += ExploreRow.Header(ExploreAnchor.Moods)
         rows += ExploreRow.MoodRail(distinctZones)
     }

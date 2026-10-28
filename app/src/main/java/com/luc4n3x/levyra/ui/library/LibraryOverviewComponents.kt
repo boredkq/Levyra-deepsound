@@ -94,6 +94,7 @@ import com.luc4n3x.levyra.domain.Track
 import com.luc4n3x.levyra.ui.i18n.LocalLevyraStrings
 import com.luc4n3x.levyra.ui.selection.TrackSelectionActions
 import com.luc4n3x.levyra.ui.selection.TrackSelectionBar
+import com.luc4n3x.levyra.ui.selection.listBottomPadding
 import com.luc4n3x.levyra.ui.selection.rememberTrackSelectionState
 import com.luc4n3x.levyra.ui.selection.resolveSelected
 import com.luc4n3x.levyra.ui.selection.trackSelectionKey
@@ -419,7 +420,7 @@ internal fun SmartCollectionDetail(
                     start = 16.dp,
                     end = 16.dp,
                     top = 12.dp,
-                    bottom = if (selection.isActive) 230.dp else levyraTabContentBottomPadding(state.currentTrack != null)
+                    bottom = selection.listBottomPadding(levyraTabContentBottomPadding(state.currentTrack != null))
                 ),
                 verticalArrangement = Arrangement.spacedBy(14.dp)
             ) {
@@ -463,6 +464,7 @@ internal fun SmartCollectionDetail(
             }
 
             TrackSelectionBar(
+                aboveRootDock = true,
                 state = selection,
                 allVisibleIds = selectableIds,
                 actions = TrackSelectionActions(
@@ -497,11 +499,7 @@ internal fun SmartCollectionDetail(
                 ),
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
-                    .padding(
-                        start = 12.dp,
-                        end = 12.dp,
-                        bottom = if (state.currentTrack != null) 84.dp else 12.dp
-                    )
+                    .padding(horizontal = 12.dp)
             )
 
             if (batchAddTargets.isNotEmpty()) {

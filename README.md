@@ -82,13 +82,15 @@ Want to dig deeper into how Levyra works? The full documentation covers setup, f
 
 [**Open the full Levyra documentation →**](https://levyra.dpdns.org/docs/)
 
-## ✦ JioSaavn · Verified high-quality audio
+## ✦ High-quality audio · JioSaavn & FLAC
 
 When high-quality audio is enabled, Levyra can use JioSaavn as another source for the same track. The track in your library does not change.
 
 Before switching sources, Levyra checks that it found the right recording and that the stream matches the quality it claims to have. It can try the available 320, 160 and 96 kbps versions. If a stream is advertised as 320 kbps but measures below that range, Levyra does not show it as 320 kbps.
 
-The match uses more than the song title. Levyra also checks performers and artist roles, album and release details, duration, explicit status, language, featured artists and version markers. When needed, it compares a search result with JioSaavn's track details so it can tell an original recording from a compilation, reissue or alternate version.
+Levyra can also play FLAC. That part is still experimental, so I can't promise yet how stable it will be in everyday use.
+
+The JioSaavn match uses more than the song title. Levyra also checks performers and artist roles, album and release details, duration, explicit status, language, featured artists and version markers. When needed, it compares a search result with JioSaavn's track details so it can tell an original recording from a compilation, reissue or alternate version.
 
 When a match passes those checks, Levyra can play the audio directly from JioSaavn's CDN. If that source is temporarily unavailable, or Levyra cannot verify the recording safely, playback stays on the normal source. Successful matches can be remembered so Levyra does not have to start the lookup from scratch every time.
 Artwork, lyrics, queue position, listening history and recommendations still belong to the original Levyra track.
@@ -217,6 +219,8 @@ Levyra builds on ideas and work from several open-source projects:
 - [zemer-cipher](https://github.com/ZemerTeam/zemer-cipher): open-source work used for YouTube cipher deobfuscation and PoToken generation.
 - [LRCLIB](https://lrclib.net/): provides the synchronized lyrics database and API.
 
+I'd also like to thank [Monochrome](https://tracks.monochrome.st) and [Arcod](https://arcod.xyz) for the FLAC streams Levyra can use.
+
 Previous Levyra app logo designed by [@gauravbhindwar](https://github.com/gauravbhindwar) in [#525](https://github.com/LUC4N3X/Levyra-deepsound/issues/525). The current logo and visual identity are by [@LUC4N3X](https://github.com/LUC4N3X).
 
 Contributions and bug reports are welcome. Technical documentation and architecture notes are in the [project documentation](https://levyra.dpdns.org/docs/).
@@ -228,11 +232,14 @@ Contributions and bug reports are welcome. Technical documentation and architect
 <div align="center">
 
 <a href="https://luc4n3x.pages.dev/">
-  <img src="docs/assets/levyra-signature.png?v=levyra-monitor" width="350" alt="LUC4N3X — Creator &amp; Maintainer">
+  <img src="docs/assets/levyra-signature.webp?v=levyra-room" width="350" alt="LUC4N3X — Creator &amp; Maintainer">
 </a>
 
 ### LUC4N3X
-<p><b>Creator &amp; Maintainer</b></p>
+
+<p>
+  <img src="docs/assets/levyra-creator-badge-light.svg" width="224" height="46" alt="Creator &amp; Maintainer">
+</p>
 
 <p>
   I created Levyra and actively build and maintain the project for Android and Windows.<br>

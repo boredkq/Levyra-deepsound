@@ -15,6 +15,7 @@ import com.luc4n3x.levyra.data.isChartArtworkPlaceholder
 import com.luc4n3x.levyra.data.youtubemusic.YoutubeMusicHome
 import com.luc4n3x.levyra.data.youtubemusic.YoutubeMusicHomeSource
 import com.luc4n3x.levyra.domain.AlbumHit
+import com.luc4n3x.levyra.domain.ArtistProfile
 import com.luc4n3x.levyra.domain.ArtistExclusions
 import com.luc4n3x.levyra.domain.BatchDownload
 import com.luc4n3x.levyra.domain.PlaylistHit
@@ -186,6 +187,10 @@ class HomeViewModel internal constructor(
     fun createPlaylist(name: String, firstTrack: Track? = null) = root.createPlaylist(name, firstTrack)
     fun openAlbum(album: AlbumHit) = root.openAlbum(album)
     fun openReleaseRadarEntry(entry: ReleaseRadarEntry) = root.openReleaseRadarEntry(entry)
+    fun toggleFollowArtist(artist: ArtistHit) = root.toggleFollowArtist(artist)
+    fun startSongRadioFrom(track: Track) = root.startSongRadioFrom(track)
+    suspend fun artistRadioTracks(track: Track) = root.artistRadioTracks(track)
+    fun openListeningRecap() = root.openListeningRecap()
     fun openArtistByName(name: String) = root.openArtistByName(name)
     fun openArtistFromHit(hit: ArtistHit) = root.openArtistFromHit(hit)
     fun openSettings() = root.openSettings()
@@ -269,6 +274,15 @@ class HomeViewModel internal constructor(
 }
 
 class SearchViewModel(root: LevyraViewModel) : LevyraScreenViewModel(root, ::searchProjection) {
+    fun openExploreZone(zone: com.luc4n3x.levyra.domain.ExploreZone) = root.openExploreZone(zone)
+    fun openExploreSamples(index: Int) = root.openExploreSamples(index)
+    fun ensureExploreSamples() = root.ensureExploreSamples()
+    fun ensureExplore(strings: com.luc4n3x.levyra.ui.i18n.LevyraStrings) = root.ensureExplore(strings)
+    fun openExploreCategory(category: com.luc4n3x.levyra.domain.ExploreCategory) {
+        root.selectExploreCategory(category)
+        root.selectTab(com.luc4n3x.levyra.domain.LevyraTab.Explore)
+    }
+    fun openSettings() = root.openSettings()
     fun addToPlaylist(playlistId: String, track: Track) = root.addToPlaylist(playlistId, track)
     fun addTracksToPlaylist(playlistId: String, tracks: List<Track>) = root.addTracksToPlaylist(playlistId, tracks)
     fun addToQueue(track: Track) = root.addToQueue(track)
@@ -307,6 +321,7 @@ class SearchViewModel(root: LevyraViewModel) : LevyraScreenViewModel(root, ::sea
 }
 
 class ExploreViewModel(root: LevyraViewModel) : LevyraScreenViewModel(root, ::exploreProjection) {
+    fun openExploreSamples(index: Int) = root.openExploreSamples(index)
     fun playVideoFrom(list: List<Track>, track: Track) = root.playVideoFrom(list, track)
     fun consumeExploreOpenRequest() = root.consumeExploreOpenRequest()
     private var mixPresentationJob: Job? = null
@@ -482,6 +497,7 @@ class LibraryViewModel(root: LevyraViewModel) : LevyraScreenViewModel(root, ::li
 }
 
 class PlayerViewModel(root: LevyraViewModel) : LevyraScreenViewModel(root, ::playerProjection) {
+    fun toggleFollowArtist(artist: com.luc4n3x.levyra.domain.ArtistHit) = root.toggleFollowArtist(artist)
     fun addToPlaylist(playlistId: String, track: Track) = root.addToPlaylist(playlistId, track)
     fun addToQueue(track: Track) = root.addToQueue(track)
     fun closePlayer() = root.closePlayer()
@@ -496,6 +512,8 @@ class PlayerViewModel(root: LevyraViewModel) : LevyraScreenViewModel(root, ::pla
     fun next() = root.next()
     suspend fun playerArtistHits(track: Track, resolveArtwork: Boolean = true): List<ArtistHit> =
         root.playerArtistHits(track, resolveArtwork)
+
+    suspend fun playerArtistProfile(track: Track): ArtistProfile? = root.playerArtistProfile(track)
 
     suspend fun trackCredits(track: Track, retry: Boolean): TrackCredits = root.trackCredits(track, retry)
     fun openArtist(track: Track, artistIndex: Int = 0) {
@@ -1302,6 +1320,11 @@ internal fun LocalLibraryUiState.completedScanSongs(): List<Track>? =
 
 internal data class SearchProjection(
     val currentTrack: Track?,
+    val isVideoMode: Boolean,
+    val userName: String,
+    val exploreSamples: List<Track>,
+    val exploreCategories: List<ExploreCategory>,
+    val exploreCategoryArtwork: Map<String, String>,
     val downloadProgressByTrackId: Map<String, Int>,
     val downloadedTrackIds: Set<String>,
     val downloadingTrackIds: Set<String>,
@@ -1334,6 +1357,11 @@ internal data class SearchProjection(
 
 internal fun searchProjection(state: LevyraUiState): SearchProjection = SearchProjection(
     currentTrack = state.currentTrack,
+    isVideoMode = state.isVideoMode,
+    userName = state.userName,
+    exploreSamples = state.exploreSamples,
+    exploreCategories = state.exploreCategories,
+    exploreCategoryArtwork = state.exploreCategoryArtwork,
     downloadProgressByTrackId = state.downloadProgressByTrackId,
     downloadedTrackIds = state.downloadedTrackIds,
     downloadingTrackIds = state.downloadingTrackIds,
