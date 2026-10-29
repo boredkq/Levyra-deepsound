@@ -27,6 +27,20 @@ Levyra does not grant permission to ignore or override rights or restrictions se
 
 The fact that Levyra can interact with a service does not mean that every possible use of that feature is permitted by that service, a rights holder, or the law.
 
+### FLAC sources and third-party account access
+
+When FLAC is selected on Android, Levyra tries TIDAL first, with Monochrome and Arcod available as fallbacks. Availability depends on the recording, region, account entitlement and service restrictions. A successful connection or a lossless label is not evidence of permission to access a service or use its content.
+
+The integration is included for software research, testing, interoperability and lawful playback. It is not intended to promote piracy, unauthorized account access or unlawful copying. These purposes do not themselves grant permission to use an account or copyrighted content. Embedded tokens can provide real account access and must be handled as credentials.
+
+Levyra does not operate a music-hosting or subscription service, issue third-party accounts or subscriptions, or grant licences to music content. Levyra does not create or sell TIDAL accounts or subscriptions. Accounts associated with third-party session credentials remain external to the project. Levyra does not claim ownership of those accounts and cannot grant access rights on behalf of their holders or TIDAL.
+
+Account details, access tokens and refresh tokens shared on websites, messaging services or other public channels remain subject to the account holder's rights, the provider's terms and applicable law. Finding them online does not establish permission to use, copy or redistribute them. Credentials included in source code or a software build are distributed with that code or build; this notice does not change that fact or establish that their distribution is authorized.
+
+Only use account access and media you are entitled to use under applicable law and the service's terms, including [TIDAL's terms](https://tidal.com/terms). This notice does not replace those terms, grant a content licence, or remove obligations or liability that the law places on project maintainers, distributors or users. Rights-holder concerns can be raised through the process in [section 11](#11-rights-holder-concerns); do not post account credentials in a public issue.
+
+The lawful-use conditions in [section 4](#4-lawful-use-and-user-responsibility) and the warranty disclaimers and liability limitations in [section 9](#9-warranty-and-liability) and the project licence also apply to this integration, subject to applicable law and mandatory rights. They do not authorize piracy, unauthorized access or unlawful circumvention, and do not replace any required permission.
+
 ## 4. Lawful use and user responsibility
 
 Users are responsible for deciding whether their particular use of Levyra and third-party material is lawful and authorized.
